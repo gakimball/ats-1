@@ -1,19 +1,8 @@
-const RESERVED_WORDS = [
-  '+',
-  '-',
-  '*',
-  '/',
-  'dup',
-]
-const TUPLE_TYPE = Symbol('TUPLE_TYPE')
-const TUPLE_ORDER = Symbol('TUPLE_ORDER')
+import { ForthMachineTuple, ForthMachineType, TUPLE_TYPE } from './types/machine-type';
+import { getForthType } from './utils/get-forth-type';
+import { FORTH_MACHINE_WORDS } from './words';
 
-type ForthMachineScalar = number | boolean
-type ForthMachineTuple = {
-  [TUPLE_TYPE]: string;
-  [K: string]: ForthMachineType
-}
-type ForthMachineType = ForthMachineScalar | ForthMachineType[] | ForthMachineTuple
+const TUPLE_ORDER = Symbol('TUPLE_ORDER')
 
 interface ForthMachineSyscallArgs {
   pop: () => ForthMachineType;
@@ -136,14 +125,14 @@ export class ForthMachine {
         return value
       }
 
-      throw new Error(`Expected a number, got ${typeof value}`)
+      throw new Error(`Expected a number, got ${getForthType(value)}`)
     },
     tuple: (type, value) => {
       if (typeof value === 'object' && TUPLE_TYPE in value && value[TUPLE_TYPE] === type) {
         return value
       }
 
-      throw new Error(`Expected ${type}, got ${typeof value}`)
+      throw new Error(`Expected ${type}, got ${getForthType(value)}`)
     },
     execute: script => this.execute(script),
   }
@@ -284,7 +273,7 @@ export class ForthMachine {
             defaultValue = this.pop()
           }
 
-          if (RESERVED_WORDS.includes(varName)) {
+          if ((FORTH_MACHINE_WORDS as string[]).includes(varName)) {
             throw new Error(`${varName} is a reserved word`)
           }
 
@@ -507,7 +496,7 @@ export class ForthMachine {
       return value
     }
 
-    throw new Error(`Expected number, got ${typeof value}`)
+    throw new Error(`Expected number, got ${getForthType(value)}`)
   }
 
   private list(): ForthMachineType[] {
@@ -517,7 +506,7 @@ export class ForthMachine {
       return value
     }
 
-    throw new Error(`Expected list, got ${typeof value}`)
+    throw new Error(`Expected list, got ${getForthType(value)}`)
   }
 
   private tupleWithProp(key: string): ForthMachineTuple {
@@ -531,6 +520,6 @@ export class ForthMachine {
       throw new Error(`Tuple ${value[TUPLE_TYPE]} does not have property ${key}`)
     }
 
-    throw new Error(`Expected tuple, got ${typeof value}`)
+    throw new Error(`Expected tuple, got ${getForthType(value)}`)
   }
 }
