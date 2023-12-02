@@ -1,5 +1,8 @@
 import { ForthMachineTuple, ForthMachineType, TUPLE_TYPE } from './types/machine-type';
+import { getElseOrEndToken } from './utils/get-else-or-end-token';
+import { getEndTokenIndex } from './utils/get-end-token';
 import { getForthType } from './utils/get-forth-type';
+import { stringifyForthValue } from './utils/stringify-forth-value';
 import { FORTH_MACHINE_WORDS } from './words';
 
 const TUPLE_ORDER = Symbol('TUPLE_ORDER')
@@ -26,83 +29,26 @@ interface ForthMachineTupleBlueprint {
 }
 
 export class ForthMachine {
-  private static getElseOrEnd(tokens: string[], index: number): number {
-    let nestedIfCount = 0
-
-    while (index < tokens.length - 1) {
-      const token = tokens[++index]
-
-      switch (token) {
-        case 'if?':
-          nestedIfCount++
-          break
-        case 'else':
-        case 'end':
-          if (nestedIfCount === 0) {
-            return index
-          }
-          if (token === 'end') {
-            nestedIfCount--
-          }
-          break
-      }
-    }
-
-    throw new Error('Could not find matching else/end for if')
-  }
-
-  private static getEnd(tokens: string[], index: number): number {
-    let nestedIfCount = 0
-
-    while (index < tokens.length - 1) {
-      const token = tokens[++index]
-
-      switch (token) {
-        case 'if?':
-          nestedIfCount++
-          break
-        case 'end':
-          if (nestedIfCount === 0) {
-            return index
-          }
-          nestedIfCount--
-      }
-    }
-
-    throw new Error('Could not find matching end for else')
-  }
-
-  private static formatStackValue(value: ForthMachineType): string {
-    if (Array.isArray(value)) {
-      return `[${value.map(ForthMachine.formatStackValue).join(', ')}]`
-    }
-
-    if (typeof value === 'object') {
-      const name = value[TUPLE_TYPE].slice(0, -1)
-      const props = Object.entries(value)
-        .map(([key, value]) => `${key}:${ForthMachine.formatStackValue(value)}`)
-        .join(', ')
-
-      return `${name} ${props} }`
-    }
-
-    if (typeof value === 'number') {
-      return String(value)
-    }
-
-    return `:${value}`
-  }
-
   private readonly stack: Array<ForthMachineType> = []
 
+  /**
+   * Map of global variables, which are accessible anywhere in the script.
+   */
   private readonly variables: {
     [name: string]: ForthMachineType;
   } = {}
 
+  /**
+   * Map of user-defined functions; each value is the function body.
+   */
   private readonly functions: {
     [name: string]: string;
   } = {}
 
+  /**
+   * Map of user-defined tuples; each value includes the expected order of the properties, and a
+   * map of default values.
+   */
   private readonly tuples: {
     [name: string]: {
       [TUPLE_ORDER]: string[];
@@ -110,9 +56,19 @@ export class ForthMachine {
     };
   } = {}
 
+  /**
+   * Map of helper methods that are passed to external syscalls. This includes stack manipulation
+   * functions, and type guards.
+   */
   private syscallArgs: ForthMachineSyscallArgs = {
+    /** Pop the top value off the stack. */
     pop: () => this.pop(),
+    /** Push a value onto the stack. */
     push: value => this.push(value),
+    /**
+     * Get the value of a variable. No stack manipulation occurs.
+     * @throws Throws if the variable is not defined.
+     */
     variable: name => {
       if (name in this.variables) {
         return this.variables[name]
@@ -120,6 +76,10 @@ export class ForthMachine {
 
       throw new Error(`Syscall error: no variable named ${name}`)
     },
+    /**
+     * Assert that `value` is a number.
+     * @throws Throws if `value` is not a number.
+     */
     num: value => {
       if (typeof value === 'number') {
         return value
@@ -127,6 +87,10 @@ export class ForthMachine {
 
       throw new Error(`Expected a number, got ${getForthType(value)}`)
     },
+    /**
+     * Assert that `value` is a tuple of the given type.
+     * @throws Throws if `value` is not the right type.
+     */
     tuple: (type, value) => {
       if (typeof value === 'object' && TUPLE_TYPE in value && value[TUPLE_TYPE] === type) {
         return value
@@ -134,6 +98,10 @@ export class ForthMachine {
 
       throw new Error(`Expected ${type}, got ${getForthType(value)}`)
     },
+    /**
+     * Run the given script within the machine's context.
+     * @returns The current stack formatted as a string.
+     */
     execute: script => this.execute(script),
   }
 
@@ -182,14 +150,6 @@ export class ForthMachine {
 
         continue
       }
-
-      // const res = /^(?<keep>~?)(?<access>\.?)(?<word>.+?)(?<assign>!?)$/.exec(token)
-      // const match = {
-      //   keep: res?.groups?.keep !== '',
-      //   access: res?.groups?.access !== '',
-      //   assign: res?.groups?.assign !== '',
-      // }
-      // token = res?.groups?.word ?? ''
 
       const isKeepMode = token.startsWith('~')
 
@@ -249,13 +209,13 @@ export class ForthMachine {
           }
 
           if (!truthy) {
-            index = ForthMachine.getElseOrEnd(tokens, index)
+            index = getElseOrEndToken(tokens, index, token)
           }
 
           break
         }
         case 'else': {
-          index = ForthMachine.getEnd(tokens, index)
+          index = getEndTokenIndex(tokens, index, token)
           break
         }
         case 'var':
@@ -293,7 +253,7 @@ export class ForthMachine {
             throw new Error(`Function ${fnName} must end in ()`)
           }
 
-          index = ForthMachine.getEnd(tokens, index)
+          index = getEndTokenIndex(tokens, index, token)
           this.functions[fnName] = tokens.slice(fnStartIndex, index).join(' ')
 
           break
@@ -444,9 +404,17 @@ export class ForthMachine {
       }
     }
 
-    return this.stack.map(ForthMachine.formatStackValue).join(' ')
+    return this.stack.map(stringifyForthValue).join(' ')
   }
 
+  /**
+   * Parse a token that could be a value (e.g. a number or boolean), or a variable that references
+   * a value.
+   * @param token Token to parse.
+   * @param closure The current closure.
+   * @returns A resolved value, or `undefined` if no value could be resolved. This happens if the
+   * token can't be parsed as a scalar, and no variable exists matching its name.
+   */
   private parseValue(token: string, closure: {
     [varName: string]: ForthMachineType;
   }): ForthMachineType | undefined {
