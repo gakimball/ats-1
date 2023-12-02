@@ -49,6 +49,13 @@ end
 
 ## Conditionals
 
+`if?` is a truthy check:
+
+- Number greater than 0
+- `:true`, not `:false`
+- List length greater than 0
+- Tuples are always truthy
+
 ```
 1 if?
   2
@@ -57,42 +64,19 @@ else
 end
 ```
 
-# Ideas
+## Keep mode
 
-A tuple syntax for objects/dictionaries, that maps named properties to array indexes:
+Some accessor words can be changed to keep values on the stack, by prefixing the word with `~`.
 
-```
-( Define )
-tup vector{}
-  .x 0 .y 0
-end
+| Word | Syntax | Stack effect |
+| ---- | ------ | ------------ |
+| index | `~index` | `( list index -- list list[index] )` |
+| length | `~length` | `( list -- list len(list) )` |
+| property access | `~.prop` | `( tuple -- tuple tuple[prop] )` |
 
-( Create )
-( x y -- vector )
-2 4 vector{}
+## Debugging
 
-( Get )
-( vector prop -- value )
-.x ( => 2 )
-
-( Alter )
-( vector value -- vector' )
-3 .x!
-```
-
----
-
-Maybe a quick "keep" syntax, so instead of writing this:
-
-```
-[ 1 2 3 ] dup length
-```
-
-You can write:
-
-```
-[ 1 2 3 ] ~length
-```
+The `debug` word logs to the console the current set of variables, functions, tuples, and closure, without modifying the stack.
 
 # License
 

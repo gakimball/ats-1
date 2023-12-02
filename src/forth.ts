@@ -174,7 +174,7 @@ export class ForthMachine {
 
     while (index < tokens.length - 1) {
       index++
-      const token = tokens[index]
+      let token = tokens[index]
       const frame = stack.at(-1)
 
       if (frame?.type === 'list') {
@@ -201,6 +201,12 @@ export class ForthMachine {
       //   assign: res?.groups?.assign !== '',
       // }
       // token = res?.groups?.word ?? ''
+
+      const isKeepMode = token.startsWith('~')
+
+      if (isKeepMode) {
+        token = token.slice(1)
+      }
 
       switch (token) {
         case '+':
@@ -238,6 +244,12 @@ export class ForthMachine {
         case 'if?': {
           const value = this.pop()
           let truthy = false
+
+          if (Array.isArray(value) && value.length > 0) {
+            truthy = true
+          } else if (typeof value === 'object') {
+            truthy = true
+          }
 
           if (typeof value === 'number' && value > 0) {
             truthy = true
@@ -353,11 +365,21 @@ export class ForthMachine {
           const index = this.num()
           const list = this.list()
 
+          if (isKeepMode) {
+            this.push(list)
+          }
+
           this.push(list[index] ?? 0)
           break
         }
         case 'length': {
-          this.push(this.list().length)
+          const list = this.list()
+
+          if (isKeepMode) {
+            this.push(list)
+          }
+
+          this.push(list.length)
           break
         }
         case '[': {
@@ -385,6 +407,10 @@ export class ForthMachine {
               })
             } else {
               const tuple = this.tupleWithProp(propName)
+
+              if (isKeepMode) {
+                this.push(tuple)
+              }
 
               this.push(tuple[propName])
             }
