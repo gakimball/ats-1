@@ -1,0 +1,19 @@
+.container {
+  --piano-border: 1px solid #ccc;
+
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: stretch;
+  height: 100px;
+  border: var(--piano-border);
+}
+
+.key {
+  width: 20px;
+  text-align: center;
+  line-height: 100px;
+
+  &:not(:last-child) {
+    border-right: var(--piano-border);
+  }
+}

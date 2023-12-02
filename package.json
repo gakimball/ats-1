@@ -1,0 +1,43 @@
+{
+  "scripts": {
+    "start": "parcel -p 3000",
+    "repl": "ts-node --project tsconfig.repl.json ./lib/repl.ts",
+    "eval": "ts-node --project tsconfig.repl.json ./lib/eval.ts",
+    "test": "ava"
+  },
+  "source": "index.html",
+  "browserslist": "> 0.5%, last 2 versions, not dead",
+  "dependencies": {
+    "@types/node": "^20.9.4",
+    "parcel": "^2.10.3",
+    "preact": "^10.19.2",
+    "ts-node": "^10.9.1"
+  },
+  "devDependencies": {
+    "ava": "^5.3.1",
+    "tsx": "^4.6.1"
+  },
+  "alias": {
+    "react": "preact/compat",
+    "react-dom/test-utils": "preact/test-utils",
+    "react-dom": "preact/compat",
+    "react/jsx-runtime": "preact/jsx-runtime",
+    "preact/jsx-dev-runtime": "preact/jsx-runtime"
+  },
+  "@parcel/transformer-css": {
+    "drafts": {
+      "nesting": true
+    }
+  },
+  "ava": {
+    "files": [
+      "./src/**/*.test.ts"
+    ],
+    "extensions": {
+      "ts": "module"
+    },
+    "nodeArguments": [
+      "--loader=tsx"
+    ]
+  }
+}
