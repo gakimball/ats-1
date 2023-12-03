@@ -1,42 +1,42 @@
-import { ForthMachineTuple, ForthMachineType, TUPLE_TYPE } from './types/machine-type';
+import { EVMTuple, EVMType, TUPLE_TYPE } from './types/machine-type';
 import { getElseOrEndToken } from './utils/get-else-or-end-token';
 import { getEndTokenIndex } from './utils/get-end-token';
-import { getForthType } from './utils/get-forth-type';
-import { stringifyForthValue } from './utils/stringify-forth-value';
-import { FORTH_MACHINE_WORDS } from './utils/words';
+import { getEVMType } from './utils/get-evm-type';
+import { stringifyEVMValue } from './utils/stringify-evm-value';
+import { ENO_WORDS } from './utils/words';
 
 const TUPLE_ORDER = Symbol('TUPLE_ORDER')
 
-interface ForthMachineSyscallArgs {
-  pop: () => ForthMachineType;
-  push: (value: ForthMachineType) => void;
-  variable: (name: string) => ForthMachineType;
-  num: (value: ForthMachineType) => number;
-  list: (value: ForthMachineType) => ForthMachineType[];
+interface EVMSyscallArgs {
+  pop: () => EVMType;
+  push: (value: EVMType) => void;
+  variable: (name: string) => EVMType;
+  num: (value: EVMType) => number;
+  list: (value: EVMType) => EVMType[];
   execute: (script: string) => void;
-  tuple: (type: string, value: ForthMachineType) => ForthMachineTuple;
+  tuple: (type: string, value: EVMType) => EVMTuple;
 }
 
-export type ForthMachineSyscall = (args: ForthMachineSyscallArgs) => void
+export type EVMSyscall = (args: EVMSyscallArgs) => void
 
-type ForthMachineStackFrame = {
+type EVMContext = {
   type: 'list',
-  value: ForthMachineType[];
+  value: EVMType[];
 }
 
-interface ForthMachineTupleBlueprint {
+interface EVMTupleBlueprint {
   [TUPLE_ORDER]: string[];
-  [K: string]: ForthMachineType;
+  [K: string]: EVMType;
 }
 
-export class ForthMachine {
-  private readonly stack: Array<ForthMachineType> = []
+export class EVM {
+  private readonly stack: Array<EVMType> = []
 
   /**
    * Map of global variables, which are accessible anywhere in the script.
    */
   private readonly variables: {
-    [name: string]: ForthMachineType;
+    [name: string]: EVMType;
   } = {}
 
   /** List of variables that are constant. */
@@ -56,7 +56,7 @@ export class ForthMachine {
   private readonly tuples: {
     [name: string]: {
       [TUPLE_ORDER]: string[];
-      [key: string]: ForthMachineType;
+      [key: string]: EVMType;
     };
   } = {}
 
@@ -64,7 +64,7 @@ export class ForthMachine {
    * Map of helper methods that are passed to external syscalls. This includes stack manipulation
    * functions, and type guards.
    */
-  private syscallArgs: ForthMachineSyscallArgs = {
+  private syscallArgs: EVMSyscallArgs = {
     /** Pop the top value off the stack. */
     pop: () => this.pop(),
     /** Push a value onto the stack. */
@@ -89,7 +89,7 @@ export class ForthMachine {
         return value
       }
 
-      throw new Error(`Expected a number, got ${getForthType(value)}`)
+      throw new Error(`Expected a number, got ${getEVMType(value)}`)
     },
     /**
      * Assert that `value` is a list.
@@ -100,7 +100,7 @@ export class ForthMachine {
         return value
       }
 
-      throw new Error(`Expected a list, got ${getForthType(value)}`)
+      throw new Error(`Expected a list, got ${getEVMType(value)}`)
     },
     /**
      * Assert that `value` is a tuple of the given type.
@@ -111,7 +111,7 @@ export class ForthMachine {
         return value
       }
 
-      throw new Error(`Expected ${type}, got ${getForthType(value)}`)
+      throw new Error(`Expected ${type}, got ${getEVMType(value)}`)
     },
     /**
      * Run the given script within the machine's context.
@@ -122,7 +122,7 @@ export class ForthMachine {
 
   constructor(
     private readonly syscalls: {
-      [name: string]: ForthMachineSyscall
+      [name: string]: EVMSyscall
     } = {}
   ) {}
 
@@ -133,7 +133,7 @@ export class ForthMachine {
   execute(input: string) {
     const tokens = input.trim().replace(/\([^)]+\)/g, '').split(/\s+/)
     let index = -1
-    const stack: ForthMachineStackFrame[] = []
+    const contexts: EVMContext[] = []
 
     if (tokens.length === 1 && tokens[0] === '') {
       // Skip execution
@@ -141,23 +141,23 @@ export class ForthMachine {
     }
 
     const closure: {
-      [varName: string]: ForthMachineType;
+      [varName: string]: EVMType;
     } = {}
 
     while (index < tokens.length - 1) {
       index++
       let token = tokens[index]
-      const frame = stack.at(-1)
+      const context = contexts.at(-1)
 
-      if (frame?.type === 'list') {
+      if (context?.type === 'list') {
         if (token === ']') {
-          this.push(frame.value)
-          stack.pop()
+          this.push(context.value)
+          contexts.pop()
         } else {
           const value = this.parseValue(token, closure)
 
           if (value !== undefined) {
-            frame.value.push(value)
+            context.value.push(value)
           } else {
             throw new Error(`Expected a value for a list, got ${token}`)
           }
@@ -242,7 +242,7 @@ export class ForthMachine {
         case 'const': {
           const isGlobal = token === 'var' || token === 'const'
           let varName = tokens[++index]
-          let defaultValue: ForthMachineType = 0
+          let defaultValue: EVMType = 0
 
           if (!varName) {
             throw new Error(`Expected a variable name after ${token}`)
@@ -253,7 +253,7 @@ export class ForthMachine {
             defaultValue = this.pop()
           }
 
-          if ((FORTH_MACHINE_WORDS as string[]).includes(varName)) {
+          if ((ENO_WORDS as string[]).includes(varName)) {
             throw new Error(`${varName} is a reserved word`)
           }
 
@@ -290,7 +290,7 @@ export class ForthMachine {
           }
 
           let prop: string | undefined
-          const tuple: ForthMachineTupleBlueprint = {
+          const tuple: EVMTupleBlueprint = {
             [TUPLE_ORDER]: [],
           }
 
@@ -378,7 +378,7 @@ export class ForthMachine {
           break
         }
         case '[': {
-          stack.push({
+          contexts.push({
             type: 'list',
             value: [],
           })
@@ -434,7 +434,7 @@ export class ForthMachine {
           } else if (token.endsWith('{}')) {
             if (token in this.tuples) {
               const blueprint = this.tuples[token]
-              const tuple: ForthMachineTuple = {
+              const tuple: EVMTuple = {
                 [TUPLE_TYPE]: token,
               }
 
@@ -456,7 +456,7 @@ export class ForthMachine {
       }
     }
 
-    return this.stack.map(stringifyForthValue).join(' ')
+    return this.stack.map(stringifyEVMValue).join(' ')
   }
 
   /**
@@ -468,8 +468,8 @@ export class ForthMachine {
    * token can't be parsed as a scalar, and no variable exists matching its name.
    */
   private parseValue(token: string, closure: {
-    [varName: string]: ForthMachineType;
-  }): ForthMachineType | undefined {
+    [varName: string]: EVMType;
+  }): EVMType | undefined {
     if (token.match(/^\d+$/)) {
       return Number.parseInt(token, 10)
     }
@@ -495,7 +495,7 @@ export class ForthMachine {
     }
   }
 
-  private pop(): ForthMachineType {
+  private pop(): EVMType {
     const value = this.stack.pop()
 
     if (value === undefined) {
@@ -505,7 +505,7 @@ export class ForthMachine {
     return value
   }
 
-  private push(value: ForthMachineType) {
+  private push(value: EVMType) {
     this.stack.push(value)
   }
 
@@ -516,20 +516,20 @@ export class ForthMachine {
       return value
     }
 
-    throw new Error(`Expected number, got ${getForthType(value)}`)
+    throw new Error(`Expected number, got ${getEVMType(value)}`)
   }
 
-  private list(): ForthMachineType[] {
+  private list(): EVMType[] {
     const value = this.pop()
 
     if (Array.isArray(value)) {
       return value
     }
 
-    throw new Error(`Expected list, got ${getForthType(value)}`)
+    throw new Error(`Expected list, got ${getEVMType(value)}`)
   }
 
-  private tupleWithProp(key: string): ForthMachineTuple {
+  private tupleWithProp(key: string): EVMTuple {
     const value = this.pop()
 
     if (typeof value === 'object' && TUPLE_TYPE in value) {
@@ -540,6 +540,6 @@ export class ForthMachine {
       throw new Error(`Tuple ${value[TUPLE_TYPE]} does not have property ${key}`)
     }
 
-    throw new Error(`Expected tuple, got ${getForthType(value)}`)
+    throw new Error(`Expected tuple, got ${getEVMType(value)}`)
   }
 }

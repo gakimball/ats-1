@@ -1,4 +1,4 @@
-import { MIDIEventEmitter } from './console';
+import { MIDIEventEmitter } from './audio-telesystem';
 
 export const createFakeMidiInput = (): {
   emit: (data: Uint8Array) => void;

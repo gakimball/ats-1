@@ -1,10 +1,10 @@
 import test, { ExecutionContext } from 'ava'
-import { ForthMachine } from './forth'
+import { EVM } from './evm'
 
 const assert = (input: string, expected: unknown[]) => (t: ExecutionContext) => {
-  const forth = new ForthMachine()
-  forth.execute(input)
-  t.deepEqual(forth.getStack(), expected)
+  const evm = new EVM()
+  evm.execute(input)
+  t.deepEqual(evm.getStack(), expected)
 }
 
 test('+', assert('1 2 +', [3]))

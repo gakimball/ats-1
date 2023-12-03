@@ -1,7 +1,7 @@
 import { FunctionComponent } from 'preact'
 import { useState, useRef } from 'preact/hooks'
 import { MIDIStatus } from '../midi-status/midi-status'
-import { ForthConsole } from '../../utils/console'
+import { AudioTeleSystem } from '../../utils/audio-telesystem'
 import { useEventHandler } from '../../hooks/use-event-handler'
 import { DEFAULT_SCRIPT, NOTE_OFF, NOTE_ON } from '../../utils/constants'
 import { createFakeMidiInput } from '../../utils/fake-midi-input'
@@ -10,6 +10,7 @@ import { PaletteViewer } from '../palette-viewer/palette-viewer'
 import { PALETTE } from '../../utils/palette'
 import { Editor, EditorRef } from '../editor/editor'
 import s from './app.module.css'
+import { Header } from '../header/header'
 
 export const App: FunctionComponent = () => {
   const [midi, setMidi] = useState<MIDIAccess>()
@@ -19,7 +20,7 @@ export const App: FunctionComponent = () => {
 
   const editorRef = useRef<EditorRef>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const consoleRef = useRef<ForthConsole>()
+  const systemRef = useRef<AudioTeleSystem>()
   const fakeMidiRef = useRef(createFakeMidiInput())
 
   const connectMidi = useEventHandler(async () => {
@@ -31,8 +32,8 @@ export const App: FunctionComponent = () => {
   })
 
   const stopGame = useEventHandler(() => {
-    consoleRef.current?.stop()
-    consoleRef.current = undefined
+    systemRef.current?.stop()
+    systemRef.current = undefined
 
     const canvas = canvasRef.current
 
@@ -53,11 +54,11 @@ export const App: FunctionComponent = () => {
       return
     }
 
-    const forth = new ForthConsole(setErrorMessage)
-    consoleRef.current = forth
+    const evm = new AudioTeleSystem(setErrorMessage)
+    systemRef.current = evm
     setIsRunning(true)
 
-    forth.start(editorRef.current.getValue(), canvasRef.current, midiInput)
+    evm.start(editorRef.current.getValue(), canvasRef.current, midiInput)
   })
 
   const sendNoteOn = useEventHandler((note: number) => {
@@ -76,6 +77,9 @@ export const App: FunctionComponent = () => {
 
   return (
     <div className={s.container}>
+      <div className={s.header}>
+        <Header />
+      </div>
       <div className={s.left}>
         <Editor ref={editorRef} defaultValue={DEFAULT_SCRIPT} />
         {errorMessage && (

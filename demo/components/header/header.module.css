@@ -1,0 +1,35 @@
+.container {
+  height: 50px;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  background-color: #000;
+  padding-left: 16px;
+}
+
+.rainbow {
+  width: 45px;
+  height: 100%;
+  margin-right: 24px;
+  background-image: linear-gradient(
+    to right,
+    #79FEFF 0%,
+    #79FEFF 33%,
+    #9779FF 33%,
+    #9779FF 66%,
+    #FF7979 66%,
+    #FF7979 100%
+  );
+  transform: skewX(20deg);
+}
+
+.title {
+  font-size: 18px;
+  color: #FFE682;
+}
+
+.titlesub {
+  margin-left: 8px;
+  color: #999;
+  font-weight: normal;
+}

@@ -1,14 +1,20 @@
-A forth??
+# Audio TeleSystem (ATS-1)
 
-# Syntax
+Released in 1981, the Audio TeleSystem&trade; Model 1 (ATS-1) was an innovative video computer system known for using MIDI devices for player input, instead of traditional joysticks.
 
-## Values
+ATS-1 games are stored on tapes, which contain games and other programs written in Eno. Eno is an stack-based, interpreted language run on the Eno Virtual Machine (EVM).
 
-- Decimal: `15`
-- Hexadecimal: `0xf`
-- Booleans: `:true`, `:false`
+# Eno syntax
+
+## Types
+
+Every value on the stack has a type. Stack values do not have a size limit.
+
+- Numbers: `15` (decimal) or `0xf` (hexadecimal)
+- Booleans: `:true` and `:false`
 - Lists: `[ 1 2 3 ]`
   - Lists can only contain scalar values (numbers and booleans)
+- Tuples
 
 ## Words
 
@@ -26,7 +32,11 @@ A forth??
 
 ## Variables
 
-Variables can be global `var`, or scoped to a function `let`.
+There are three kinds of variables:
+
+- `var`: global
+- `const`: global constant
+- `let` local (within `fn`)
 
 ```
 ( Define a variable )
@@ -61,18 +71,6 @@ end
 2 square() ( => 4 )
 ```
 
-## Functions
-
-```
-( Define a function )
-fn square()
-  dup *
-end
-
-( Execute it: 2 => 4 )
-2 square()
-```
-
 ## Conditionals
 
 `if?` is a truthy check:
@@ -90,6 +88,65 @@ else
 end
 ```
 
+## Functions
+
+```
+( Define a function )
+fn square()
+  dup *
+end
+
+( Execute it: 2 => 4 )
+2 square()
+```
+
+## Tuples
+
+Tuples are dictionaries with a fixed set of properties. Define a tuple, its properties, and their default values with the `tup` keyword:
+
+```
+tup point{}
+  .x 0 .y 0
+end
+```
+
+Initialize a tuple by placing all of its properties on the stack, in order, and then using the tuple name as a word:
+
+```
+( num num -- point{} )
+5 10 point{}
+```
+
+Use the accessor syntax (leading `.`) to access a property value, which consumes the tuple.
+
+```
+( num num -- point{} )
+5 10 point{}
+
+( point{} - num )
+.x
+```
+
+To keep the tuple on the stack, use keep mode by prepending a `~`:
+
+```
+( num num -- point{} )
+5 10 point{}
+
+( point{} - point{} num )
+~.x
+```
+
+To assign a value to a tuple, append a `!` to the property. Tuples are immutable, so editing a property of a tuple produces a modified copy of the original.
+
+```
+( num num -- point{} )
+5 10 point{}
+
+( point{} num -- point{}' )
+6 .x!
+```
+
 ## Keep mode
 
 Some accessor words can be changed to keep values on the stack, by prefixing the word with `~`.
@@ -105,7 +162,15 @@ Some accessor words can be changed to keep values on the stack, by prefixing the
 
 The `debug` word logs to the console the current set of variables, functions, tuples, and closure, without modifying the stack.
 
-## To do
+# Prior art
+
+- [uxn](https://100r.co/site/uxn.html)
+- [learn-uxn](https://metasyn.pw/learn-uxn)
+- [TIC-80](https://tic80.com/)
+- [Firth](https://littlemanstackmachine.org/firth.html)
+- [Factor](https://factorcode.org/)
+
+# To do
 
 - Support negative numbers (`-1`)
 - Support floats (`0.2`)

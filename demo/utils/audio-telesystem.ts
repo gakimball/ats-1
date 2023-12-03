@@ -1,12 +1,12 @@
 import { NOTE_OFF, NOTE_ON } from './constants';
-import { ForthMachine } from '../../src/forth'
+import { EVM } from '../../src/evm'
 import { PALETTE } from './palette';
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
 }
 
-export class ForthConsole {
+export class AudioTeleSystem {
   private notes = new Set<number>();
 
   private connectMidi = false;
@@ -49,7 +49,7 @@ export class ForthConsole {
 
     ctx.imageSmoothingEnabled = false
 
-    const forth = new ForthMachine({
+    const evm = new EVM({
       'rect()': ({ variable, num, pop, tuple }) => {
         // ( rect{} color -- )
         const color = PALETTE[num(pop())]
@@ -106,7 +106,7 @@ export class ForthConsole {
       },
     })
 
-    forth.execute(`
+    evm.execute(`
       tup vec{}
         .x 0 .y 0
       end
@@ -181,14 +181,14 @@ export class ForthConsole {
     }
 
     try {
-      forth.execute(script)
+      evm.execute(script)
     } catch (error: unknown) {
       this.handleError(error)
     }
 
     const draw = () => {
       try {
-        forth.execute('game()')
+        evm.execute('game()')
       } catch (error: unknown) {
         this.handleError(error)
       }

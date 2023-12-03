@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { ForthMachine } from '../src/forth';
+import { EVM } from '../src/evm';
 
 const scriptPath = process.argv[2]
 const script = readFileSync(scriptPath).toString()
-const forth = new ForthMachine()
+const evm = new EVM()
 
-console.log(forth.execute(script))
+console.log(evm.execute(script))

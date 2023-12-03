@@ -1,4 +1,4 @@
-export enum ForthMachineWords {
+export enum EnoWords {
   ADD = '+',
   SUBTRACT = '-',
   MULTIPLY = '*',
@@ -23,4 +23,4 @@ export enum ForthMachineWords {
   LISTEND = ']',
 }
 
-export const FORTH_MACHINE_WORDS = Object.values(ForthMachineWords)
+export const ENO_WORDS = Object.values(EnoWords)

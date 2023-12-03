@@ -1,19 +1,19 @@
 import readline from 'node:readline'
-import { ForthMachine } from '../src/forth'
+import { EVM } from '../src/evm'
 
 const rl = readline.createInterface({
-  prompt: 'Forth > ',
+  prompt: 'EVM > ',
   input: process.stdin,
   output: process.stdout,
 })
 
 rl.prompt()
 
-const forth = new ForthMachine()
+const evm = new EVM()
 
 rl.on('line', input => {
   try {
-    console.log(forth.execute(input))
+    console.log(evm.execute(input))
   } catch (error: unknown) {
     if (error instanceof Error) {
       console.log(`Error: ${error.message}`)

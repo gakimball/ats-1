@@ -1,12 +1,12 @@
-interface ForthMachineToken {
+interface EVMToken {
   value: string;
   line: number;
 }
 
 const stripComments = (value: string) => value.replace(/\([^)]+\)/g, '')
 
-export const tokenize = (script: string): ForthMachineToken[] => {
-  const tokens: ForthMachineToken[] = []
+export const tokenize = (script: string): EVMToken[] => {
+  const tokens: EVMToken[] = []
 
   script.trim().split('\n').forEach((line, index) => {
     stripComments(line).split(/\s+/).forEach(value => {

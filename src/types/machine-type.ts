@@ -1,8 +1,8 @@
 export const TUPLE_TYPE = Symbol('TUPLE_TYPE')
 
-export type ForthMachineScalar = number | boolean
-export type ForthMachineTuple = {
+export type EVMScalar = number | boolean
+export type EVMTuple = {
   [TUPLE_TYPE]: string;
-  [K: string]: ForthMachineType
+  [K: string]: EVMType
 }
-export type ForthMachineType = ForthMachineScalar | ForthMachineType[] | ForthMachineTuple
+export type EVMType = EVMScalar | EVMType[] | EVMTuple

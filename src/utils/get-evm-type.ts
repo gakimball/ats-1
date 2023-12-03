@@ -1,6 +1,6 @@
-import { ForthMachineType, TUPLE_TYPE } from '../types/machine-type';
+import { EVMType, TUPLE_TYPE } from '../types/machine-type';
 
-export const getForthType = (value: ForthMachineType) => {
+export const getEVMType = (value: EVMType) => {
   if (Array.isArray(value)) {
     return 'list'
   }
