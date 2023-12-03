@@ -12,6 +12,7 @@ interface ForthMachineSyscallArgs {
   push: (value: ForthMachineType) => void;
   variable: (name: string) => ForthMachineType;
   num: (value: ForthMachineType) => number;
+  list: (value: ForthMachineType) => ForthMachineType[];
   execute: (script: string) => void;
   tuple: (type: string, value: ForthMachineType) => ForthMachineTuple;
 }
@@ -37,6 +38,9 @@ export class ForthMachine {
   private readonly variables: {
     [name: string]: ForthMachineType;
   } = {}
+
+  /** List of variables that are constant. */
+  private readonly constants: string[] = []
 
   /**
    * Map of user-defined functions; each value is the function body.
@@ -86,6 +90,17 @@ export class ForthMachine {
       }
 
       throw new Error(`Expected a number, got ${getForthType(value)}`)
+    },
+    /**
+     * Assert that `value` is a list.
+     * @throws Throws if `value` is not a list.
+     */
+    list: value => {
+      if (Array.isArray(value)) {
+        return value
+      }
+
+      throw new Error(`Expected a list, got ${getForthType(value)}`)
     },
     /**
      * Assert that `value` is a tuple of the given type.
@@ -174,6 +189,10 @@ export class ForthMachine {
           this.push(a / b)
           break
         }
+        case '==': {
+          this.push(this.num() === this.num())
+          break
+        }
         case 'pop':
           this.pop()
           break
@@ -219,8 +238,9 @@ export class ForthMachine {
           break
         }
         case 'var':
-        case 'let': {
-          const isGlobal = token === 'var'
+        case 'let':
+        case 'const': {
+          const isGlobal = token === 'var' || token === 'const'
           let varName = tokens[++index]
           let defaultValue: ForthMachineType = 0
 
@@ -239,6 +259,10 @@ export class ForthMachine {
 
           if (isGlobal) {
             this.variables[varName] = defaultValue
+
+            if (token === 'const') {
+              this.constants.push(varName)
+            }
           } else {
             closure[varName] = defaultValue
           }
@@ -331,6 +355,17 @@ export class ForthMachine {
           this.push(list.length)
           break
         }
+        case 'has': {
+          const needle = this.pop()
+          const list = this.list()
+
+          if (isKeepMode) {
+            this.push(list)
+          }
+
+          this.push(list.includes(needle))
+          break
+        }
         case '[': {
           stack.push({
             type: 'list',
@@ -367,6 +402,10 @@ export class ForthMachine {
             const varName = token.slice(0, -1)
 
             if (varName in this.variables) {
+              if (this.constants.includes(varName)) {
+                throw new Error(`Cannot reassign constant ${varName}`)
+              }
+
               this.variables[varName] = this.pop()
             } else {
               throw new Error(`Unknown variable ${varName}`)

@@ -23,8 +23,7 @@ export const LOCALSTORAGE_KEY = 'script'
 export const DEFAULT_SCRIPT = `
 fn game()
   cls()
-  64 64 xy()
-  10 10 wh()
-  0x0000ff rect()
+  64 64 vec{}
+  0x0000ff pixel()
 end
 `.trim()

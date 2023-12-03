@@ -62,34 +62,71 @@ export class ForthConsole {
     }
 
     const forth = new ForthMachine({
-      'pixel()': ({ variable, num, pop }) => {
-        ctx.fillStyle = `#${num(pop()).toString(16).padStart(6, '0')}`
-        ctx.fillRect(num(variable('screen/x')), num(variable('screen/y')), 1, 1)
-      },
       'rect()': ({ variable, num, pop, tuple }) => {
+        // ( rect{} color -- )
         const hexColor = num(pop()).toString(16).padStart(6, '0')
         const rect = tuple('rect{}', pop())
 
         ctx.fillStyle = `#${hexColor}`
         ctx.fillRect(num(rect.x), num(rect.y), num(rect.w), num(rect.h))
       },
+      'spr()': ({ pop, num, list, tuple, execute, push }) => {
+        // ( rect{} chr[] -- )
+        const chr = list(pop())
+        const rect = tuple('rect{}', pop())
+        const x = num(rect.x)
+        const y = num(rect.y)
+
+        // Adapted from: https://wiki.xxiivv.com/site/chr_format.html
+        for (let v = 0; v < 8; v++) {
+          for (let h = 0; h < 8; h++) {
+            const channel1 = (num(chr[v]) >> h) & 0x1;
+            const channel2 = ((num(chr[v + 8]) >> h) & 0x1) << 1;
+            const colorIndex = channel1 + channel2
+
+            push(x + 7 - h)
+            push(y + v)
+            execute(`vec{} gfx/pal ${colorIndex} index pixel()`)
+          }
+        }
+      },
       'cls()': () => {
-        ctx.clearRect(0, 0, 128, 128)
+        // ( -- )
+        ctx.fillStyle = '#000000'
+        ctx.fillRect(0, 0, 128, 128)
       },
       'notes()': ({ push }) => {
+        // ( -- notes[] )
         push([...this.notes])
       },
       'connect_midi()': () => {
+        // ( -- )
         this.connectMidi = true
       },
     })
 
     forth.execute(`
+      tup vec{}
+        .x 0 .y 0
+      end
+
       tup rect{}
         .x 0 .y 0 .w 0 .h 0
       end
 
-      var tv 0 0 128 128 rect{} tv!
+      0 0 128 128 rect{} const gfx/tv!
+      [ 0xffffff 0x000000 0xff0000 0x72dec2 ] const gfx/pal/default!
+      gfx/pal/default var gfx/pal!
+
+      ( vec color -- )
+      fn pixel()
+        let color!
+        let vec!
+
+        vec .x vec .y 1 1 rect{} color rect()
+      end
+
+      cls()
     `)
 
     window.addEventListener('keydown', this.handleKeyEvent)
