@@ -15,6 +15,7 @@ export const App: FunctionComponent = () => {
   const [midi, setMidi] = useState<MIDIAccess>()
   const [inputId, setInputId] = useState<string>()
   const [isRunning, setIsRunning] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string>()
 
   const editorRef = useRef<EditorRef>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -52,19 +53,11 @@ export const App: FunctionComponent = () => {
       return
     }
 
-    const forth = new ForthConsole()
+    const forth = new ForthConsole(setErrorMessage)
     consoleRef.current = forth
     setIsRunning(true)
 
-    try {
-      forth.start(editorRef.current.getValue(), canvasRef.current, midiInput)
-    } catch (error: unknown) {
-      stopGame()
-
-      if (error instanceof Error) {
-        console.log(`Error: ${error.message}`)
-      }
-    }
+    forth.start(editorRef.current.getValue(), canvasRef.current, midiInput)
   })
 
   const sendNoteOn = useEventHandler((note: number) => {
@@ -85,6 +78,11 @@ export const App: FunctionComponent = () => {
     <div className={s.container}>
       <div className={s.left}>
         <Editor ref={editorRef} defaultValue={DEFAULT_SCRIPT} />
+        {errorMessage && (
+          <div className={s.error}>
+            {errorMessage}
+          </div>
+        )}
         <button
           className={s.button}
           type="button"

@@ -15,6 +15,10 @@ export class ForthConsole {
 
   private midiInput: MIDIEventEmitter | undefined
 
+  constructor(
+    private readonly onError: (errorMessage: string) => void,
+  ) {}
+
   handleMidiInput = (evt: Event) => {
     const event = evt as MIDIMessageEvent
     const command = event.data[0] >> 4;
@@ -107,6 +111,51 @@ export class ForthConsole {
         .x 0 .y 0
       end
 
+      ( vec vec|num -- vec' )
+      fn vec/add()
+        let b!
+        let a!
+
+        b is-num if?
+          a ~.x b + .x!
+            ~.y b + .y!
+        else
+          a ~.x b .x + .x!
+            ~.y b .y + .y!
+        end
+      end
+
+      ( vec factor -- vec' )
+      fn vec/scale()
+        let b!
+        let a!
+
+        a ~.x b * .x!
+          !.y b * .y!
+      end
+
+      ( vec vec -- product )
+      fn vec/dot()
+        let b!
+        let a!
+
+        a .x b .x *
+        a .y b .y *
+        +
+      end
+
+      ( incident normal -- vec )
+      fn vec/bounce()
+        let normal!
+        let incident!
+
+        normal
+        incident normal vec/dot() 2 *
+        vec/scale()
+
+        ( todo: need support for negative numbers )
+      end
+
       tup rect{}
         .x 0 .y 0 .w 0 .h 0
       end
@@ -131,10 +180,19 @@ export class ForthConsole {
       this.midiInput = midiInput
     }
 
-    forth.execute(script)
+    try {
+      forth.execute(script)
+    } catch (error: unknown) {
+      this.handleError(error)
+    }
 
     const draw = () => {
-      forth.execute('game()')
+      try {
+        forth.execute('game()')
+      } catch (error: unknown) {
+        this.handleError(error)
+      }
+
       window.requestAnimationFrame(draw)
     }
 
@@ -146,6 +204,12 @@ export class ForthConsole {
 
     if (this.midiInput) {
       this.midiInput.onmidimessage = null
+    }
+  }
+
+  private handleError(error: unknown) {
+    if (error instanceof Error) {
+      this.onError(error.message)
     }
   }
 }
