@@ -1,5 +1,6 @@
 import { ForthConsoleButton, NOTE_OFF, NOTE_ON, buttonCodes, buttonKeyMap } from './constants';
 import { ForthMachine } from '../../src/forth'
+import { toHexColor } from './to-hex-color';
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
@@ -61,13 +62,15 @@ export class ForthConsole {
       throw new Error(`No drawing context`)
     }
 
+    ctx.imageSmoothingEnabled = false
+
     const forth = new ForthMachine({
       'rect()': ({ variable, num, pop, tuple }) => {
         // ( rect{} color -- )
-        const hexColor = num(pop()).toString(16).padStart(6, '0')
+        const color = toHexColor(num(pop()))
         const rect = tuple('rect{}', pop())
 
-        ctx.fillStyle = `#${hexColor}`
+        ctx.fillStyle = color
         ctx.fillRect(num(rect.x), num(rect.y), num(rect.w), num(rect.h))
       },
       'spr()': ({ pop, num, list, tuple, execute, push }) => {
@@ -89,6 +92,19 @@ export class ForthConsole {
             execute(`vec{} gfx/pal ${colorIndex} index pixel()`)
           }
         }
+      },
+      'line()': ({ pop, num, tuple }) => {
+        // ( from to color -- )
+        const color = toHexColor(num(pop()))
+        const to = tuple('vec{}', pop())
+        const from = tuple('vec{}', pop())
+
+        ctx.strokeStyle = color
+        ctx.beginPath()
+        ctx.moveTo(num(from.x), num(from.y))
+        ctx.lineTo(num(to.x), num(to.y))
+        ctx.closePath()
+        ctx.stroke()
       },
       'cls()': () => {
         // ( -- )

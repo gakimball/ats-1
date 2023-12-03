@@ -105,6 +105,12 @@ Some accessor words can be changed to keep values on the stack, by prefixing the
 
 The `debug` word logs to the console the current set of variables, functions, tuples, and closure, without modifying the stack.
 
+## To do
+
+- Support negative numbers (`-1`)
+- Support floats (`0.2`)
+- Loop syntax (`do`, `loop`, `stop`)
+
 # License
 
 MIT &copy; [Geoff Kimball](https://geoffkimball.com)

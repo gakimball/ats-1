@@ -1,0 +1,45 @@
+It would be nice if you could construct tuples without defining every property. Tuples already have defaults, so either I remove those, or add the ability to partially define a tuple.
+
+Here's two ways I can think off the top of my head to do this:
+
+1. Add a `:nil` type that can be passed
+
+```
+tup rect{}
+  .x 0 .y 0 .w 0 .h 0
+end
+
+:nil :nil 10 10 rect{}
+~.x ( => 0 )
+~.w ( => 10 )
+```
+
+Maybe `:nil` could have a shortcut representation, like `*` or `?`. Something that makes it look like a placeholder value.
+
+2. Add labeled stack values. Not sure exactly how I'd parse these; they could exist as their own value on the stack, or I could look ahead one token. But then I'd need to store every scalar value with that label attached, so that complicates some things.
+
+```
+tup rect{}
+  .x 0 .y 0 .w 0 .h 0
+end
+
+w: 10 h: 10 rect{}
+```
+
+Now that I'm looking at this, parsing it gets weird, because you have to figure out on-the-fly if you're reading a fixed number of values (full object), or a variable number of labeled values (partial object). This syntax also assumes the values you're using for the tuple aren't already on the stack, because you have to push the label first.
+
+Let's try another approach:
+
+```
+[ w: 10 h: 10 ] rect{:}
+```
+
+The `{:}` signals a partial object. It's a `:` purely because it mirrors the colon used in the label syntax. It could be something like `?` also, but I like the idea of pairing those characters as a mnemonic aid.
+
+The reason I can't just pass the list by itself is because a tuple might have a list for a property. So we need to be able to disambiguate between these two syntaxes:
+
+```
+0 0 10 10 rect{}
+
+[ w: 10 h: 10 ] rect{:}
+```
