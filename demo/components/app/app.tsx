@@ -1,11 +1,11 @@
 import { FunctionComponent } from 'preact'
 import { useState, useRef } from 'preact/hooks'
-import { MIDIStatus } from './midi-status'
-import { ForthConsole } from '../console'
-import { useEventHandler } from '../hooks/use-event-handler'
-import { DEFAULT_SCRIPT, NOTE_OFF, NOTE_ON } from '../constants'
-import { createFakeMidiInput } from '../utils/fake-midi-input'
-import { Piano } from './piano/piano'
+import { MIDIStatus } from '../midi-status/midi-status'
+import { ForthConsole } from '../../utils/console'
+import { useEventHandler } from '../../hooks/use-event-handler'
+import { DEFAULT_SCRIPT, NOTE_OFF, NOTE_ON } from '../../utils/constants'
+import { createFakeMidiInput } from '../../utils/fake-midi-input'
+import { Piano } from '../piano/piano'
 import s from './app.module.css'
 
 export const App: FunctionComponent = () => {

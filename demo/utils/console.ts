@@ -1,5 +1,5 @@
 import { ForthConsoleButton, NOTE_OFF, NOTE_ON, buttonCodes, buttonKeyMap } from './constants';
-import { ForthMachine } from './forth'
+import { ForthMachine } from '../../src/forth'
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;

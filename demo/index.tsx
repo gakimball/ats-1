@@ -1,6 +1,5 @@
 import { render } from 'preact';
-import { App } from './components/app'
-import './components/midi-status'
+import { App } from './components/app/app'
 
 declare global {
   interface MIDIInputMap {

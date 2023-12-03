@@ -3,7 +3,7 @@ import { getElseOrEndToken } from './utils/get-else-or-end-token';
 import { getEndTokenIndex } from './utils/get-end-token';
 import { getForthType } from './utils/get-forth-type';
 import { stringifyForthValue } from './utils/stringify-forth-value';
-import { FORTH_MACHINE_WORDS } from './words';
+import { FORTH_MACHINE_WORDS } from './utils/words';
 
 const TUPLE_ORDER = Symbol('TUPLE_ORDER')
 
