@@ -366,6 +366,17 @@ export class ForthMachine {
           this.push(list.includes(needle))
           break
         }
+        case 'is-num': {
+          const value = this.pop()
+
+          if (isKeepMode) {
+            this.push(value)
+          }
+
+          this.push(typeof value === 'number')
+
+          break
+        }
         case '[': {
           stack.push({
             type: 'list',
@@ -401,7 +412,9 @@ export class ForthMachine {
           } else if (token.endsWith('!')) {
             const varName = token.slice(0, -1)
 
-            if (varName in this.variables) {
+            if (varName in closure) {
+              closure[varName] = this.pop()
+            } else if (varName in this.variables) {
               if (this.constants.includes(varName)) {
                 throw new Error(`Cannot reassign constant ${varName}`)
               }
