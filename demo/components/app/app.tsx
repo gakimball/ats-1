@@ -6,16 +6,17 @@ import { useEventHandler } from '../../hooks/use-event-handler'
 import { DEFAULT_SCRIPT, NOTE_OFF, NOTE_ON } from '../../utils/constants'
 import { createFakeMidiInput } from '../../utils/fake-midi-input'
 import { Piano } from '../piano/piano'
-import s from './app.module.css'
 import { PaletteViewer } from '../palette-viewer/palette-viewer'
 import { PALETTE } from '../../utils/palette'
+import { Editor, EditorRef } from '../editor/editor'
+import s from './app.module.css'
 
 export const App: FunctionComponent = () => {
-  const [script, setScript] = useState(DEFAULT_SCRIPT)
   const [midi, setMidi] = useState<MIDIAccess>()
   const [inputId, setInputId] = useState<string>()
   const [isRunning, setIsRunning] = useState(false)
 
+  const editorRef = useRef<EditorRef>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const consoleRef = useRef<ForthConsole>()
   const fakeMidiRef = useRef(createFakeMidiInput())
@@ -47,7 +48,7 @@ export const App: FunctionComponent = () => {
       : undefined)
       ?? fakeMidiRef.current.input
 
-    if (!canvasRef.current) {
+    if (!canvasRef.current || !editorRef.current) {
       return
     }
 
@@ -56,7 +57,7 @@ export const App: FunctionComponent = () => {
     setIsRunning(true)
 
     try {
-      forth.start(script, canvasRef.current, midiInput)
+      forth.start(editorRef.current.getValue(), canvasRef.current, midiInput)
     } catch (error: unknown) {
       stopGame()
 
@@ -83,11 +84,7 @@ export const App: FunctionComponent = () => {
   return (
     <div className={s.container}>
       <div className={s.left}>
-        <textarea
-          className={s.textarea}
-          value={script}
-          onChange={e => setScript(e.currentTarget.value)}
-        ></textarea>
+        <Editor ref={editorRef} defaultValue={DEFAULT_SCRIPT} />
         <button
           className={s.button}
           type="button"

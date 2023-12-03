@@ -1,0 +1,7 @@
+.container {
+  flex: 1;
+}
+
+:global(.cm-editor) {
+  height: 100%;
+}
