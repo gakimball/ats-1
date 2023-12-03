@@ -1,25 +1,12 @@
-import { ForthConsoleButton, NOTE_OFF, NOTE_ON, buttonCodes, buttonKeyMap } from './constants';
+import { NOTE_OFF, NOTE_ON } from './constants';
 import { ForthMachine } from '../../src/forth'
-import { toHexColor } from './to-hex-color';
+import { PALETTE } from './palette';
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
 }
 
 export class ForthConsole {
-  private buttons: {
-    [key in ForthConsoleButton]: boolean;
-  } = {
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-    a: false,
-    b: false,
-    c: false,
-    d: false,
-  };
-
   private notes = new Set<number>();
 
   private connectMidi = false;
@@ -27,12 +14,6 @@ export class ForthConsole {
   private rafHandle = -1;
 
   private midiInput: MIDIEventEmitter | undefined
-
-  handleKeyEvent = (event: KeyboardEvent) => {
-    if (event.code in buttonKeyMap) {
-      this.buttons[buttonKeyMap[event.code]] = event.type === 'keydown'
-    }
-  }
 
   handleMidiInput = (evt: Event) => {
     const event = evt as MIDIMessageEvent
@@ -67,7 +48,7 @@ export class ForthConsole {
     const forth = new ForthMachine({
       'rect()': ({ variable, num, pop, tuple }) => {
         // ( rect{} color -- )
-        const color = toHexColor(num(pop()))
+        const color = PALETTE[num(pop())]
         const rect = tuple('rect{}', pop())
 
         ctx.fillStyle = color
@@ -95,7 +76,7 @@ export class ForthConsole {
       },
       'line()': ({ pop, num, tuple }) => {
         // ( from to color -- )
-        const color = toHexColor(num(pop()))
+        const color = PALETTE[num(pop())]
         const to = tuple('vec{}', pop())
         const from = tuple('vec{}', pop())
 
@@ -131,7 +112,7 @@ export class ForthConsole {
       end
 
       0 0 128 128 rect{} const gfx/tv!
-      [ 0xffffff 0x000000 0xff0000 0x72dec2 ] const gfx/pal/default!
+      [ 0x0d 0x13 0x2c 0x30 ] const gfx/pal/default!
       gfx/pal/default var gfx/pal!
 
       ( vec color -- )
@@ -144,9 +125,6 @@ export class ForthConsole {
 
       cls()
     `)
-
-    window.addEventListener('keydown', this.handleKeyEvent)
-    window.addEventListener('keyup', this.handleKeyEvent)
 
     if (midiInput) {
       midiInput.onmidimessage = this.handleMidiInput
@@ -164,8 +142,6 @@ export class ForthConsole {
   }
 
   stop() {
-    window.removeEventListener('keydown', this.handleKeyEvent)
-    window.removeEventListener('keyup', this.handleKeyEvent)
     window.cancelAnimationFrame(this.rafHandle)
 
     if (this.midiInput) {

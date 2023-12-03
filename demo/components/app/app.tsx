@@ -7,6 +7,8 @@ import { DEFAULT_SCRIPT, NOTE_OFF, NOTE_ON } from '../../utils/constants'
 import { createFakeMidiInput } from '../../utils/fake-midi-input'
 import { Piano } from '../piano/piano'
 import s from './app.module.css'
+import { PaletteViewer } from '../palette-viewer/palette-viewer'
+import { PALETTE } from '../../utils/palette'
 
 export const App: FunctionComponent = () => {
   const [script, setScript] = useState(DEFAULT_SCRIPT)
@@ -95,6 +97,7 @@ export const App: FunctionComponent = () => {
         </button>
       </div>
       <div className={s.right}>
+        <PaletteViewer colors={PALETTE} />
         <canvas
           ref={canvasRef}
           className={s.canvas}

@@ -1,0 +1,14 @@
+.container {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: repeat(4, 30px);
+}
+
+.color {
+  background-color: var(--PaletteViewer-color);
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.75;
+  }
+}
