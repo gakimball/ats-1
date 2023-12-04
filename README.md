@@ -239,7 +239,7 @@ Syscalls have access to these helper methods:
 - `num(value)`: assert a value is a number
 - `list(value)`: assert a value is a list
 - `tuple(type, value)`: assert a value is a tuple of a certain type
-  - `type` must include the trailing braces, e.g. `tuple('rect', pop())`
+  - `type` must include the trailing braces, e.g. `tuple('rect{}', pop())`
 
 ## Prior art
 
