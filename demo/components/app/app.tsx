@@ -3,14 +3,15 @@ import { useState, useRef } from 'preact/hooks'
 import { MIDIStatus } from '../midi-status/midi-status'
 import { AudioTeleSystem } from '../../utils/audio-telesystem'
 import { useEventHandler } from '../../hooks/use-event-handler'
-import { DEFAULT_SCRIPT, NOTE_OFF, NOTE_ON } from '../../utils/constants'
+import { NOTE_OFF, NOTE_ON } from '../../utils/constants'
 import { createFakeMidiInput } from '../../utils/fake-midi-input'
 import { Piano } from '../piano/piano'
 import { PaletteViewer } from '../palette-viewer/palette-viewer'
 import { PALETTE } from '../../utils/palette'
 import { Editor, EditorRef } from '../editor/editor'
-import s from './app.module.css'
 import { Header } from '../header/header'
+import bootScript from 'bundle-text:../../../examples/boot.eno'
+import s from './app.module.css'
 
 export const App: FunctionComponent = () => {
   const [midi, setMidi] = useState<MIDIAccess>()
@@ -19,7 +20,7 @@ export const App: FunctionComponent = () => {
   const [errorMessage, setErrorMessage] = useState<string>()
 
   const editorRef = useRef<EditorRef>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const drawingContextRef = useRef<CanvasRenderingContext2D>()
   const systemRef = useRef<AudioTeleSystem>()
   const fakeMidiRef = useRef(createFakeMidiInput())
 
@@ -34,12 +35,7 @@ export const App: FunctionComponent = () => {
   const stopGame = useEventHandler(() => {
     systemRef.current?.stop()
     systemRef.current = undefined
-
-    const canvas = canvasRef.current
-
-    if (canvas) {
-      canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
-    }
+    drawingContextRef.current?.clearRect(0, 0, 128, 128)
 
     setIsRunning(false)
   })
@@ -50,7 +46,7 @@ export const App: FunctionComponent = () => {
       : undefined)
       ?? fakeMidiRef.current.input
 
-    if (!canvasRef.current || !editorRef.current) {
+    if (!drawingContextRef.current || !editorRef.current) {
       return
     }
 
@@ -58,7 +54,7 @@ export const App: FunctionComponent = () => {
     systemRef.current = evm
     setIsRunning(true)
 
-    evm.start(editorRef.current.getValue(), canvasRef.current, midiInput)
+    evm.start(editorRef.current.getValue(), drawingContextRef.current, midiInput)
   })
 
   const sendNoteOn = useEventHandler((note: number) => {
@@ -81,7 +77,7 @@ export const App: FunctionComponent = () => {
         <Header />
       </div>
       <div className={s.left}>
-        <Editor ref={editorRef} defaultValue={DEFAULT_SCRIPT} />
+        <Editor ref={editorRef} defaultValue={bootScript} />
         {errorMessage && (
           <div className={s.error}>
             {errorMessage}
@@ -98,7 +94,9 @@ export const App: FunctionComponent = () => {
       <div className={s.right}>
         <PaletteViewer colors={PALETTE} />
         <canvas
-          ref={canvasRef}
+          ref={e => {
+            drawingContextRef.current = e?.getContext('2d') ?? undefined
+          }}
           className={s.canvas}
           width={128}
           height={128}

@@ -16,6 +16,8 @@ export class AudioTeleSystem {
 
   private midiInput: MIDIEventEmitter | undefined
 
+  private isRunning = true
+
   constructor(
     private readonly onError: (errorMessage: string) => void,
   ) {}
@@ -39,15 +41,9 @@ export class AudioTeleSystem {
 
   start(
     script: string,
-    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D,
     midiInput: MIDIEventEmitter,
   ) {
-    const ctx = canvas.getContext('2d')
-
-    if (!ctx) {
-      throw new Error(`No drawing context`)
-    }
-
     ctx.imageSmoothingEnabled = false
 
     const evm = new EVM({
@@ -124,6 +120,8 @@ export class AudioTeleSystem {
         this.connectMidi = true
       },
     })
+
+    this.isRunning = true
 
     evm.execute(`
       tup vec{}
@@ -206,19 +204,22 @@ export class AudioTeleSystem {
     }
 
     const draw = () => {
-      try {
-        evm.execute('game()')
-      } catch (error: unknown) {
-        this.handleError(error)
-      }
+      if (this.isRunning) {
+        try {
+          evm.execute('game()')
+        } catch (error: unknown) {
+          this.handleError(error)
+        }
 
-      window.requestAnimationFrame(draw)
+        window.requestAnimationFrame(draw)
+      }
     }
 
     this.rafHandle = window.requestAnimationFrame(draw)
   }
 
   stop() {
+    this.isRunning = false
     window.cancelAnimationFrame(this.rafHandle)
 
     if (this.midiInput) {
@@ -227,6 +228,8 @@ export class AudioTeleSystem {
   }
 
   private handleError(error: unknown) {
+    this.isRunning = false
+
     if (error instanceof Error) {
       this.onError(error.message)
     }

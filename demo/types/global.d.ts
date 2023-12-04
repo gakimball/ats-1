@@ -5,3 +5,9 @@ declare module '*.module.css' {
 
   export default styles
 }
+
+declare module '*.eno' {
+  const script: string;
+
+  export default script
+}
