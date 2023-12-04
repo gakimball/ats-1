@@ -1,12 +1,45 @@
 # Audio TeleSystem (ATS-1)
 
+> A fantasy console
+
 Released in 1981, the Audio TeleSystem&trade; Model 1 (ATS-1) was an innovative video computer system known for using MIDI devices for player input, instead of traditional joysticks.
 
 ATS-1 games are stored on tapes, which contain games and other programs written in Eno. Eno is an stack-based, interpreted language run on the Eno Virtual Machine (EVM).
 
-# Eno syntax
+## Contents
 
-## Types
+- [Demo](#demo)
+- [Eno syntax](#eno-syntax)
+- [Virtual machine](#virtual-machine)
+- [Prior art](#prior-art)
+- [To do](#to-do)
+- [License](#license)
+
+## Demo
+
+View the online demo here:
+
+<https://geoff.computer/ats>
+
+To run the demo locally:
+
+```
+git clone https://github.com/gakimball/ats-1
+cd ats-1
+npm install
+npm start
+```
+
+The web app will be viewable on port 3000.
+
+Other commands:
+
+- `npm run repl`: opens a command line REPL for Eno
+- `npm run eval <file>`: run an Eno script and see the final stack
+
+## Eno syntax
+
+### Types
 
 Every value on the stack has a type. Stack values do not have a size limit.
 
@@ -16,7 +49,7 @@ Every value on the stack has a type. Stack values do not have a size limit.
   - Lists can only contain scalar values (numbers and booleans)
 - Tuples
 
-## Words
+### Words
 
 | Word | Before | After | Keep |
 | ---- | ------ | ----- | ---- |
@@ -30,7 +63,7 @@ Every value on the stack has a type. Stack values do not have a size limit.
 | `index` | `list idx` | `list[idx]` | `~index` |
 | `length` | `list` | `len(list)` | `~length` |
 
-## Variables
+### Variables
 
 There are three kinds of variables:
 
@@ -71,7 +104,7 @@ end
 2 square() ( => 4 )
 ```
 
-## Conditionals
+### Conditionals
 
 `if?` is a truthy check:
 
@@ -88,7 +121,7 @@ else
 end
 ```
 
-## Functions
+### Functions
 
 ```
 ( Define a function )
@@ -100,7 +133,7 @@ end
 2 square()
 ```
 
-## Tuples
+### Tuples
 
 Tuples are dictionaries with a fixed set of properties. Define a tuple, its properties, and their default values with the `tup` keyword:
 
@@ -123,7 +156,7 @@ Use the accessor syntax (leading `.`) to access a property value, which consumes
 ( num num -- point{} )
 5 10 point{}
 
-( point{} - num )
+( point{} -- num )
 .x
 ```
 
@@ -133,7 +166,7 @@ To keep the tuple on the stack, use keep mode by prepending a `~`:
 ( num num -- point{} )
 5 10 point{}
 
-( point{} - point{} num )
+( point{} -- point{} num )
 ~.x
 ```
 
@@ -147,7 +180,7 @@ To assign a value to a tuple, append a `!` to the property. Tuples are immutable
 6 .x!
 ```
 
-## Keep mode
+### Keep mode
 
 Some accessor words can be changed to keep values on the stack, by prefixing the word with `~`.
 
@@ -158,11 +191,57 @@ Some accessor words can be changed to keep values on the stack, by prefixing the
 | has | `~has` | `( list -- list boolean )` |
 | property access | `~.prop` | `( tuple -- tuple tuple[prop] )` |
 
-## Debugging
+### Debugging
 
 The `debug` word logs to the console the current set of variables, functions, tuples, and closure, without modifying the stack.
 
-# Prior art
+## Virtual machine
+
+The EVM executes an Eno script. Eno is an interpreted language, with no intermediate compile step.
+
+```ts
+// There's no npm module for this, so assume this script is in the root of the repo
+import { EVM } from './src/evm'
+
+const evm = new EVM()
+
+evm.execute('1 2 +')
+console.log(evm.getStack()) // => [3]
+
+// An instance of the VM is a single execution context
+evm.execute('dup * dup')
+console.log(evm.getStack()) // => [9, 9]
+```
+
+### Syscalls
+
+An EVM instance can provide custom syscalls, which can run external code.
+
+```ts
+import { readFileSync } from 'node:fs'
+import { EVM } from './src/evm'
+
+const evm = new EVM({
+  'load-file()': ({ push }) => {
+    // This is a slightly contrived example because string types don't exist yet
+    const file = readFileSync('some/file.txt').toString()
+    push(file)
+  },
+})
+```
+
+Syscalls have access to these helper methods:
+
+- `pop()`: return the top value of the stack
+- `push(value)`: push a value on top of the stack
+- `execute(str)`: run code in the VM's current context
+- `variable(name)`: get the value of a variable
+- `num(value)`: assert a value is a number
+- `list(value)`: assert a value is a list
+- `tuple(type, value)`: assert a value is a tuple of a certain type
+  - `type` must include the trailing braces, e.g. `tuple('rect', pop())`
+
+## Prior art
 
 - [uxn](https://100r.co/site/uxn.html)
 - [learn-uxn](https://metasyn.pw/learn-uxn)
@@ -170,12 +249,12 @@ The `debug` word logs to the console the current set of variables, functions, tu
 - [Firth](https://littlemanstackmachine.org/firth.html)
 - [Factor](https://factorcode.org/)
 
-# To do
+## To do
 
 - Support negative numbers (`-1`)
 - Support floats (`0.2`)
 - Loop syntax (`do`, `loop`, `stop`)
 
-# License
+## License
 
 MIT &copy; [Geoff Kimball](https://geoffkimball.com)
