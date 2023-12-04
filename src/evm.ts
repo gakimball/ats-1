@@ -89,7 +89,7 @@ export class EVM {
         return value
       }
 
-      throw new Error(`Expected a number, got ${getEVMType(value)}`)
+      throw new Error(`Syscall error: expected a number, got ${getEVMType(value)}`)
     },
     /**
      * Assert that `value` is a list.
@@ -100,7 +100,7 @@ export class EVM {
         return value
       }
 
-      throw new Error(`Expected a list, got ${getEVMType(value)}`)
+      throw new Error(`Syscall error: expected a list, got ${getEVMType(value)}`)
     },
     /**
      * Assert that `value` is a tuple of the given type.
@@ -111,7 +111,7 @@ export class EVM {
         return value
       }
 
-      throw new Error(`Expected ${type}, got ${getEVMType(value)}`)
+      throw new Error(`Syscall error: expected ${type}, got ${getEVMType(value)}`)
     },
     /**
      * Run the given script within the machine's context.
