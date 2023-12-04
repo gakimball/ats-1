@@ -1,0 +1,43 @@
+[ 0x41 0x54 0x53 0x2D 0x31 ] const boot/ats/text!
+[ 0x0d 0x28 0x0d 0x0d ] const boot/ats/pal!
+[ 0x2c 0x23 0x25 ] const boot/rainbow!
+14 const boot/rainbow/width!
+gfx/tv .h const boot/max-height!
+
+0 var frame!
+
+fn min()
+  let b! let a!
+  a b - if? b else a end
+end
+
+fn game()
+  0 draw-rainbow()
+  1 draw-rainbow()
+  2 draw-rainbow()
+
+  frame 120 - if?
+    42 56 boot/rainbow/width 3 * 16 rect{} 0x0d rect()
+    boot/ats/pal gfx/pal!
+    44 60 vec{} boot/ats/text text()
+    gfx/pal/default gfx/pal!
+  end
+
+  frame 1 + frame!
+end
+
+fn draw-rainbow()
+  let idx!
+  boot/rainbow/width idx * 42 +
+    let x!
+  15 idx *
+    let delay!
+  frame delay - 2 * gfx/tv .h min()
+    let height!
+
+  height if?
+    x 0 boot/rainbow/width height rect{}
+    boot/rainbow idx index
+    rect()
+  end
+end

@@ -1,0 +1,6 @@
+[ 0x68 0x65 0x6c 0x6c 0x6f ] const "hello"!
+
+fn game()
+  cls()
+  64 64 vec{} "hello" text()
+end
