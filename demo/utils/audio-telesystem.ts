@@ -1,6 +1,7 @@
 import { NOTE_OFF, NOTE_ON } from './constants';
 import { EVM } from '../../src/evm'
 import { PALETTE } from './palette';
+import { FONT } from './font';
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
@@ -90,6 +91,24 @@ export class AudioTeleSystem {
         ctx.lineTo(num(to.x), num(to.y))
         ctx.closePath()
         ctx.stroke()
+      },
+      'text()': ({ pop, list, tuple, num, execute }) => {
+        // ( vec{} chars[] -- )
+        const chars = list(pop())
+        const vec = tuple('vec{}', pop())
+        const x = num(vec.x)
+        const y = num(vec.y)
+
+        chars.forEach((value, index) => {
+          const code = num(value)
+          const sprite = [
+            ...FONT[code],
+            ...Array(8).fill(0),
+          ]
+          const offset = index * 8
+
+          execute(`${x + offset} ${y} 1 1 rect{} [ ${sprite.join(' ')} ] spr()`)
+        })
       },
       'cls()': () => {
         // ( -- )
