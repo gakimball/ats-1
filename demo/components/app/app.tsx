@@ -14,6 +14,7 @@ import { Header } from '../header/header'
 import bootScript from 'bundle-text:../../../examples/boot.eno'
 import { NavItem } from '../nav-item/nav-item'
 import s from './app.module.css'
+import { createFakeMidiOutput } from '../../utils/fake-midi-output'
 
 type AppPane = 'palette'
 
@@ -59,7 +60,12 @@ export const App: FunctionComponent = () => {
     systemRef.current = evm
     setIsRunning(true)
 
-    evm.start(editorRef.current.getValue(), drawingContextRef.current, midiInput)
+    evm.start(
+      editorRef.current.getValue(),
+      drawingContextRef.current,
+      midiInput,
+      createFakeMidiOutput(),
+    )
   })
 
   const sendNoteOn = useEventHandler((note: number) => {
@@ -129,6 +135,7 @@ export const App: FunctionComponent = () => {
           />
           {!inputId && (
             <Piano
+              isActive={isRunning}
               onNoteOn={sendNoteOn}
               onNoteOff={sendNoteOff}
             />

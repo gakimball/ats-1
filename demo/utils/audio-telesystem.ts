@@ -7,6 +7,10 @@ export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
 }
 
+export interface MIDIEventHandler {
+  send: (data: Uint8Array) => void;
+}
+
 export class AudioTeleSystem {
   private notes = new Set<number>();
 
@@ -14,7 +18,9 @@ export class AudioTeleSystem {
 
   private rafHandle = -1;
 
-  private midiInput: MIDIEventEmitter | undefined
+  private midiInput?: MIDIEventEmitter
+
+  private midiOutput?: MIDIEventHandler
 
   private isRunning = true
 
@@ -34,15 +40,16 @@ export class AudioTeleSystem {
       this.notes.add(pitch)
     }
 
-    // if (this.connectMidi) {
-    //   midiOutput?.send(event.data)
-    // }
+    if (this.connectMidi) {
+      this.midiOutput?.send(event.data)
+    }
   }
 
   start(
     script: string,
     ctx: CanvasRenderingContext2D,
     midiInput: MIDIEventEmitter,
+    midiOutput: MIDIEventHandler,
   ) {
     ctx.imageSmoothingEnabled = false
 
@@ -115,7 +122,7 @@ export class AudioTeleSystem {
         // ( -- notes[] )
         push([...this.notes])
       },
-      'connect_midi()': () => {
+      'connect-midi()': () => {
         // ( -- )
         this.connectMidi = true
       },
@@ -192,10 +199,9 @@ export class AudioTeleSystem {
       cls()
     `)
 
-    if (midiInput) {
-      midiInput.onmidimessage = this.handleMidiInput
-      this.midiInput = midiInput
-    }
+    this.midiInput = midiInput
+    this.midiOutput = midiOutput
+    midiInput.onmidimessage = this.handleMidiInput
 
     try {
       evm.execute(script)

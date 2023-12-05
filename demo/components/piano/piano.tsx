@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { useEventHandler } from '../../hooks/use-event-handler';
 
 interface PianoProps {
+  isActive: boolean;
   onNoteOff: (note: number) => void;
   onNoteOn: (note: number) => void;
 }
@@ -82,6 +83,7 @@ const NOTES: Array<{
 ]
 
 export const Piano: FunctionComponent<PianoProps> = ({
+  isActive,
   onNoteOff,
   onNoteOn,
 }) => {
@@ -118,17 +120,24 @@ export const Piano: FunctionComponent<PianoProps> = ({
       }
     }
 
-    window.addEventListener('keydown', handleEvent)
-    window.addEventListener('keyup', handleEvent)
+    if (isActive) {
+      window.addEventListener('keydown', handleEvent)
+      window.addEventListener('keyup', handleEvent)
+    }
 
     return () => {
       window.removeEventListener('keydown', handleEvent)
       window.removeEventListener('keyup', handleEvent)
     }
-  }, [pressKey, releaseKey])
+  }, [isActive, pressKey, releaseKey])
 
   return (
-    <div className={s.container}>
+    <div
+      className={`
+        ${s.container}
+        ${isActive ? s.isActive : ''}
+      `}
+    >
       {NOTES.map(note => (
         <div className={s.keyWrapper}>
           <button

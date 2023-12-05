@@ -5,10 +5,7 @@
 
 0 var frame!
 
-fn min()
-  let b! let a!
-  a b - if? b else a end
-end
+connect-midi()
 
 fn game()
   [ 0 1 2 ] [[ draw-rainbow() ]] each
@@ -37,4 +34,9 @@ fn draw-rainbow()
     boot/rainbow/colors idx index
     rect()
   end
+end
+
+fn min()
+  let b! let a!
+  a b - if? b else a end
 end

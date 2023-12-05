@@ -6,6 +6,12 @@
   align-items: stretch;
   height: 100px;
   gap: 1px;
+  transition: opacity 0.25s linear;
+
+  &:not(.isActive) {
+    opacity: 0.25;
+    pointer-events: none;
+  }
 }
 
 .keyWrapper {
