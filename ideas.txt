@@ -43,3 +43,27 @@ The reason I can't just pass the list by itself is because a tuple might have a 
 
 [ w: 10 h: 10 ] rect{:}
 ```
+
+---
+
+Bytecode?? That's a rabbit hole
+
+Requirements:
+
+- Numbers could be used as-is (signing/floats are a consideration)
+- Strings, functions, tuples all get IDs
+
+Opcodes:
+
+- STRING length char...
+- FUNC length inst...
+- WORD id (for builtins)
+- PUSHNUM number
+- PUSHSTR string_id
+- PUSHLIST list_id
+- STARTLIST
+- ENDLIST
+- CALL function_id
+- PUSHBOOL true/false
+- PUSHVAR var_id
+-

@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'preact'
 import { useState, useRef } from 'preact/hooks'
+import copyTextToClipboard from 'copy-text-to-clipboard'
 import { MIDIStatus } from '../midi-status/midi-status'
 import { AudioTeleSystem } from '../../utils/audio-telesystem'
 import { useEventHandler } from '../../hooks/use-event-handler'
@@ -11,13 +12,17 @@ import { PALETTE } from '../../utils/palette'
 import { Editor, EditorRef } from '../editor/editor'
 import { Header } from '../header/header'
 import bootScript from 'bundle-text:../../../examples/boot.eno'
+import { NavItem } from '../nav-item/nav-item'
 import s from './app.module.css'
+
+type AppPane = 'palette'
 
 export const App: FunctionComponent = () => {
   const [midi, setMidi] = useState<MIDIAccess>()
   const [inputId, setInputId] = useState<string>()
   const [isRunning, setIsRunning] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string>()
+  const [visiblePane, setVisiblePane] = useState<AppPane>()
 
   const editorRef = useRef<EditorRef>(null)
   const drawingContextRef = useRef<CanvasRenderingContext2D>()
@@ -71,49 +76,75 @@ export const App: FunctionComponent = () => {
     ]))
   })
 
+  const togglePane = useEventHandler((pane: AppPane) => {
+    setVisiblePane(prev => {
+      return prev === pane ? undefined : pane
+    })
+  })
+
+  const copyColor = useEventHandler((hexCode: string) => {
+    copyTextToClipboard(hexCode)
+    setVisiblePane(undefined)
+  })
+
   return (
-    <div className={s.container}>
-      <div className={s.header}>
-        <Header />
-      </div>
-      <div className={s.left}>
-        <Editor ref={editorRef} defaultValue={bootScript} />
-        {errorMessage && (
-          <div className={s.error}>
-            {errorMessage}
-          </div>
-        )}
-        <button
-          className={s.button}
-          type="button"
-          onClick={isRunning ? stopGame : runGame}
-        >
-          {isRunning ? 'Stop game' : 'Run game'}
-        </button>
-      </div>
-      <div className={s.right}>
-        <PaletteViewer colors={PALETTE} />
-        <canvas
-          ref={e => {
-            drawingContextRef.current = e?.getContext('2d') ?? undefined
-          }}
-          className={s.canvas}
-          width={128}
-          height={128}
-        ></canvas>
-        <MIDIStatus
-          inputMap={midi?.inputs}
-          selectedInput={inputId}
-          onConnectMidi={connectMidi}
-          onChangeInput={setInputId}
-        />
-        {!inputId && (
-          <Piano
-            onNoteOn={sendNoteOn}
-            onNoteOff={sendNoteOff}
+    <>
+      <div className={s.container}>
+        <div className={s.header}>
+          <Header>
+            <NavItem onClick={() => togglePane('palette')}>
+              Palette
+            </NavItem>
+          </Header>
+        </div>
+        <div className={s.left}>
+          <Editor ref={editorRef} defaultValue={bootScript} />
+          {errorMessage && (
+            <div className={s.error}>
+              {errorMessage}
+            </div>
+          )}
+          <button
+            className={s.button}
+            type="button"
+            onClick={isRunning ? stopGame : runGame}
+          >
+            {isRunning ? 'Stop game' : 'Run game'}
+          </button>
+        </div>
+        <div className={s.right}>
+          <canvas
+            ref={e => {
+              drawingContextRef.current = e?.getContext('2d') ?? undefined
+            }}
+            className={s.canvas}
+            width={128}
+            height={128}
+          ></canvas>
+          <MIDIStatus
+            inputMap={midi?.inputs}
+            selectedInput={inputId}
+            onConnectMidi={connectMidi}
+            onChangeInput={setInputId}
           />
-        )}
+          {!inputId && (
+            <Piano
+              onNoteOn={sendNoteOn}
+              onNoteOff={sendNoteOff}
+            />
+          )}
+        </div>
       </div>
-    </div>
+      {visiblePane && (
+        <div className={s.pane}>
+          {visiblePane === 'palette' && (
+            <PaletteViewer
+              colors={PALETTE}
+              onSelectColor={copyColor}
+            />
+          )}
+        </div>
+      )}
+    </>
   )
 }

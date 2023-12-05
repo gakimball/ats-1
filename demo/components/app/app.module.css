@@ -1,11 +1,11 @@
 .container {
   display: grid;
-  grid-template-columns: 50% 50%;
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: 50px 1fr;
+  gap: 8px;
   width: 100vw;
   height: 100vh;
   max-height: 100vh;
-  gap: 8px;
 }
 
 .header {
@@ -25,16 +25,15 @@
 
 .left {
   grid-column: 1 / 2;
-  padding-left: 8px;
   padding-bottom: 8px;
   overflow: hidden;
+  padding-left: 8px;
 }
 
 .right {
   grid-column: 2 / 3;
   align-items: center;
   justify-content: center;
-  padding-right: 8px;
 }
 
 .textarea {
@@ -57,4 +56,12 @@
   width: calc(128px * 3);
   aspect-ratio: 1;
   image-rendering: pixelated;
+}
+
+.pane {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  z-index: 1;
+  background-color: #222;
 }
