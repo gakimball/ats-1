@@ -1,7 +1,8 @@
-import { EVMTuple, EVMType, TUPLE_TYPE } from './types/machine-type';
+import { EVMCallback, EVMClosure, EVMTuple, EVMType, EVM_CALLBACK, TUPLE_TYPE } from './types/machine-type';
 import { getElseOrEndToken } from './utils/get-else-or-end-token';
 import { getEndTokenIndex } from './utils/get-end-token';
 import { getEVMType } from './utils/get-evm-type';
+import { resolveVariable } from './utils/resolve-variable';
 import { stringifyEVMValue } from './utils/stringify-evm-value';
 import { ENO_WORDS } from './utils/words';
 
@@ -20,8 +21,11 @@ interface EVMSyscallArgs {
 export type EVMSyscall = (args: EVMSyscallArgs) => void
 
 type EVMContext = {
-  type: 'list',
+  type: 'list';
   value: EVMType[];
+} | {
+  type: 'callback';
+  tokens: string[];
 }
 
 interface EVMTupleBlueprint {
@@ -35,9 +39,7 @@ export class EVM {
   /**
    * Map of global variables, which are accessible anywhere in the script.
    */
-  private readonly variables: {
-    [name: string]: EVMType;
-  } = {}
+  private readonly variables: EVMClosure = {}
 
   /** List of variables that are constant. */
   private readonly constants: string[] = []
@@ -130,7 +132,7 @@ export class EVM {
     return [...this.stack]
   }
 
-  execute(input: string) {
+  execute(input: string, outerClosure: EVMClosure = {}) {
     const tokens = input.trim().replace(/\([^)]+\)/g, '').split(/\s+/)
     let index = -1
     const contexts: EVMContext[] = []
@@ -140,9 +142,8 @@ export class EVM {
       index = 1
     }
 
-    const closure: {
-      [varName: string]: EVMType;
-    } = {}
+    const closure: EVMClosure = {}
+    const closures = [closure, outerClosure, this.variables]
 
     while (index < tokens.length - 1) {
       index++
@@ -154,13 +155,26 @@ export class EVM {
           this.push(context.value)
           contexts.pop()
         } else {
-          const value = this.parseValue(token, closure)
+          const value = this.parseValue(token, closures)
 
           if (value !== undefined) {
             context.value.push(value)
           } else {
             throw new Error(`Expected a value for a list, got ${token}`)
           }
+        }
+
+        continue
+      } else if (context?.type === 'callback') {
+        if (token === ']]') {
+          this.push({
+            [EVM_CALLBACK]: true,
+            script: context.tokens.join(' '),
+            closure,
+          })
+          contexts.pop()
+        } else {
+          context.tokens.push(token)
         }
 
         continue
@@ -309,7 +323,7 @@ export class EVM {
               prop = subtoken.slice(1)
               tuple[TUPLE_ORDER].push(prop)
             } else {
-              const value = this.parseValue(subtoken, closure)
+              const value = this.parseValue(subtoken, closures)
 
               if (value === undefined) {
                 throw new Error(`Expected value for tuple ${tupName} property ${subtoken}, got ${subtoken}`)
@@ -387,6 +401,38 @@ export class EVM {
         case ']': {
           throw new Error('No matching [ to go with ]')
         }
+        case '[[': {
+          contexts.push({
+            type: 'callback',
+            tokens: [],
+          })
+          break
+        }
+        case ']]': {
+          throw new Error('No matching [[ to go with ]]')
+        }
+        case 'map':
+        case 'each': {
+          const callback = this.callback()
+          const newList: EVMType[] = []
+
+          this.list().forEach(item => {
+            this.push(item)
+            this.execute(callback.script, closure)
+            if (token === 'map') {
+              newList.push(this.pop())
+            }
+          })
+
+          if (token === 'map') {
+            this.push(newList)
+          }
+          break
+        }
+        case 'call': {
+          this.execute(this.callback().script, closure)
+          break
+        }
         default:
           if (token.startsWith('.')) {
             let propName = token.slice(1)
@@ -412,25 +458,19 @@ export class EVM {
           } else if (token.endsWith('!')) {
             const varName = token.slice(0, -1)
 
-            if (varName in closure) {
-              closure[varName] = this.pop()
-            } else if (varName in this.variables) {
-              if (this.constants.includes(varName)) {
-                throw new Error(`Cannot reassign constant ${varName}`)
-              }
+            if (this.isConstantVariable(varName)) {
+              throw new Error(`Cannot reassign constant ${varName}`)
+            }
 
-              this.variables[varName] = this.pop()
-            } else {
-              throw new Error(`Unknown variable ${varName}`)
+            const variable = resolveVariable(varName, closures)
+
+            if (!variable) {
+              throw new Error(`Cannot assign to unknown variable ${varName}`)
             }
+
+            closures[variable.index][varName] = this.pop()
           } else if (token.endsWith('()')) {
-            if (token in this.syscalls) {
-              this.syscalls[token](this.syscallArgs)
-            } else if (token in this.functions) {
-              this.execute(this.functions[token])
-            } else {
-              throw new Error(`Unknown function ${token}`)
-            }
+            this.callFunction(token)
           } else if (token.endsWith('{}')) {
             if (token in this.tuples) {
               const blueprint = this.tuples[token]
@@ -445,7 +485,7 @@ export class EVM {
               this.push(tuple)
             }
           } else {
-            const value = this.parseValue(token, closure)
+            const value = this.parseValue(token, closures)
 
             if (value !== undefined) {
               this.push(value)
@@ -467,9 +507,7 @@ export class EVM {
    * @returns A resolved value, or `undefined` if no value could be resolved. This happens if the
    * token can't be parsed as a scalar, and no variable exists matching its name.
    */
-  private parseValue(token: string, closure: {
-    [varName: string]: EVMType;
-  }): EVMType | undefined {
+  private parseValue(token: string, closures: EVMClosure[]): EVMType | undefined {
     if (token.match(/^\d+$/)) {
       return Number.parseInt(token, 10)
     }
@@ -486,13 +524,7 @@ export class EVM {
       return false
     }
 
-    if (token in closure) {
-      return closure[token]
-    }
-
-    if (token in this.variables) {
-      return this.variables[token]
-    }
+    return resolveVariable(token, closures)?.value
   }
 
   private pop(): EVMType {
@@ -541,5 +573,29 @@ export class EVM {
     }
 
     throw new Error(`Expected tuple, got ${getEVMType(value)}`)
+  }
+
+  private callback(): EVMCallback {
+    const value = this.pop()
+
+    if (typeof value === 'object' && EVM_CALLBACK in value) {
+      return value
+    }
+
+    throw new Error(`Expected callback, got ${getEVMType(value)}`)
+  }
+
+  private isConstantVariable(varName: string) {
+    return varName in this.variables && this.constants.includes(varName)
+  }
+
+  private callFunction(funcName: string) {
+    if (funcName in this.syscalls) {
+      this.syscalls[funcName](this.syscallArgs)
+    } else if (funcName in this.functions) {
+      this.execute(this.functions[funcName])
+    } else {
+      throw new Error(`Unknown function ${funcName}`)
+    }
   }
 }

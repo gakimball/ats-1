@@ -1,8 +1,7 @@
 [ 0x41 0x54 0x53 0x2D 0x31 ] const boot/ats/text!
 [ 0x0d 0x28 0x0d 0x0d ] const boot/ats/pal!
-[ 0x2c 0x23 0x25 ] const boot/rainbow!
+[ 0x2c 0x23 0x25 ] const boot/rainbow/colors!
 14 const boot/rainbow/width!
-gfx/tv .h const boot/max-height!
 
 0 var frame!
 
@@ -12,9 +11,7 @@ fn min()
 end
 
 fn game()
-  0 draw-rainbow()
-  1 draw-rainbow()
-  2 draw-rainbow()
+  [ 0 1 2 ] [[ draw-rainbow() ]] each
 
   frame 120 - if?
     42 56 boot/rainbow/width 3 * 16 rect{} 0x0d rect()
@@ -37,7 +34,7 @@ fn draw-rainbow()
 
   height if?
     x 0 boot/rainbow/width height rect{}
-    boot/rainbow idx index
+    boot/rainbow/colors idx index
     rect()
   end
 end

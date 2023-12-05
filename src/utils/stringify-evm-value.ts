@@ -6,12 +6,16 @@ export const stringifyEVMValue = (value: EVMType): string => {
   }
 
   if (typeof value === 'object') {
-    const name = value[TUPLE_TYPE].slice(0, -1)
-    const props = Object.entries(value)
-      .map(([key, value]) => `${key}:${stringifyEVMValue(value)}`)
-      .join(', ')
+    if (TUPLE_TYPE in value) {
+      const name = value[TUPLE_TYPE].slice(0, -2)
+      const props = Object.entries(value)
+        .map(([key, value]) => `${key}:${stringifyEVMValue(value)}`)
+        .join(', ')
 
-    return `${name} ${props} }`
+      return `${name} { ${props} }`
+    }
+
+    return `callback:[ ${value.script} ]`
   }
 
   if (typeof value === 'number') {

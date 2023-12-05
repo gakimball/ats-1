@@ -47,21 +47,27 @@ Every value on the stack has a type. Stack values do not have a size limit.
 - Booleans: `:true` and `:false`
 - Lists: `[ 1 2 3 ]`
   - Lists can only contain scalar values (numbers and booleans)
-- Tuples
+- Tuples: `0 0 vec{}`
+- Callbacks: `[[ dup * ]]`
 
-### Words
+### Basics
 
-| Word | Before | After | Keep |
-| ---- | ------ | ----- | ---- |
-| `+`  | `a b`  | `a+b` | |
-| `-`  | `a b`  | `a-b` | |
-| `*`  | `a b`  | `a*b` | |
-| `/`  | `a b`  | `a/b` | |
-| `dup` | `a` | `a a` | |
-| `pop` | `a b` | `a` | |
-| `swap` | `a b` | `b a` | |
-| `index` | `list idx` | `list[idx]` | `~index` |
-| `length` | `list` | `len(list)` | `~length` |
+Eno is a stack language. Values (numbers, lists, etc.) are placed on the stack, and words are used to modify those stack values.
+
+```
+( result is 6 )
+1 2 + 2 *
+```
+
+Or explained in more detail:
+
+```
+1 ( add 1 to the stack )
+2 ( add 2 to the stack )
++ ( remove the top two elements of the stack, add them, and place the sum on the stack )
+2 ( add 2 to the stack )
+* ( remove the top two elements of the stack, multiply them, and place the product on the stack )
+```
 
 ### Variables
 
@@ -82,7 +88,7 @@ x
 1 + x!
 ```
 
-By adding `!`, a variable can be defined and immediately assigned using the top stack value:
+By adding `!`, a variable can be defined and immediately assigned using the top stack value. If not immediately assigned, variables have the value `0` by default.
 
 ```
 ( Before )
@@ -131,6 +137,30 @@ end
 
 ( Execute it: 2 => 4 )
 2 square()
+```
+
+### Callbacks
+
+Callbacks are a series of instructions to be executed by another word/function. You can use them with the `map` and `each` words to iterate through lists.
+
+```
+( list callback -- list )
+[ 1 2 3 ] [[ dup * ]] map
+
+( result is [ 1 4 9 ] )
+```
+
+`map` expects the callback to place one new item on the stack. `each` does not expect a new item, and does not place a modified list on the stack. Use `map` to edit a list, and `each` for side effects.
+
+```
+[ 0 1 2 ] [[ draw-something() ]] each
+```
+
+To execute a callback directly, use the `call` word:
+
+```
+( num callback -- num )
+2 [[ 3 * ]] call
 ```
 
 ### Tuples
@@ -194,6 +224,26 @@ Some accessor words can be changed to keep values on the stack, by prefixing the
 ### Debugging
 
 The `debug` word logs to the console the current set of variables, functions, tuples, and closure, without modifying the stack.
+
+### All words
+
+| Word | Before | After | After (keep) |
+| ---- | ------ | ----- | ---- |
+| `+`  | `a b`  | `a+b` | |
+| `-`  | `a b`  | `a-b` | |
+| `*`  | `a b`  | `a*b` | |
+| `/`  | `a b`  | `a/b` | |
+| `==` | `a b`  | `a==b` | |
+| `dup` | `a` | `a a` | |
+| `pop` | `a b` | `a` | |
+| `swap` | `a b` | `b a` | |
+| `index` | `list idx` | `list[idx]` | `list list[idx]` |
+| `length` | `list` | `len(list)` | `list len(list)` |
+| `has` | `list value` | `list.has(value)` | `list list.has(value)` |
+| `is-num` | `value` | `is-num(value)` | `value is-num(value)` |
+| `map` | `list callback` | `list'` | |
+| `each` | `list callback`| `--` | |
+| `call` | `callback` | `--` | |
 
 ## Virtual machine
 

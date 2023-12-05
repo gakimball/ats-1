@@ -7,7 +7,10 @@ export const getEVMType = (value: EVMType) => {
 
   switch (typeof value) {
     case 'object':
-      return value[TUPLE_TYPE]
+      if (TUPLE_TYPE in value) {
+        return value[TUPLE_TYPE]
+      }
+      return 'callback'
     case 'number':
       return 'number'
     case 'boolean':
