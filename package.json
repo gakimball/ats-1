@@ -1,8 +1,10 @@
 {
   "scripts": {
     "start": "parcel -p 3000",
+    "prestart": "npm run clean",
     "build": "parcel build --public-url=/ats",
-    "prebuild": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "clean": "rm -rf dist",
     "deploy": "rsync -avz -e ssh ./dist/ root@geoff.zone:/var/www_projects/ats/",
     "repl": "ts-node --project tsconfig.repl.json ./bin/repl.ts",
     "eval": "ts-node --project tsconfig.repl.json ./bin/eval.ts",
@@ -11,7 +13,9 @@
   "source": "demo/index.html",
   "browserslist": "> 0.5%, last 2 versions, not dead",
   "dependencies": {
+    "@codemirror/autocomplete": "^6.11.1",
     "@codemirror/commands": "^6.3.2",
+    "@codemirror/language": "^6.9.3",
     "@codemirror/state": "^6.3.2",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.22.1",

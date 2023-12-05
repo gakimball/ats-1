@@ -1,11 +1,11 @@
-import { EditorView, basicSetup } from 'codemirror';
 import { oneDark } from '@codemirror/theme-one-dark'
-import { keymap } from '@codemirror/view'
+import { keymap, EditorView, lineNumbers, highlightActiveLine } from '@codemirror/view'
 import { EditorState } from '@codemirror/state'
 import { forwardRef } from 'preact/compat'
 import { useEffect, useImperativeHandle, useRef, useState } from 'preact/hooks';
-import { indentWithTab } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import s from './editor.module.css'
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 
 export interface EditorRef {
   getValue: () => string;
@@ -14,6 +14,20 @@ export interface EditorRef {
 interface EditorProps {
   defaultValue: string;
 }
+
+const extensions = [
+  lineNumbers(),
+  history(),
+  closeBrackets(),
+  highlightActiveLine(),
+  oneDark,
+  keymap.of([
+    ...closeBracketsKeymap,
+    ...defaultKeymap,
+    ...historyKeymap,
+    indentWithTab,
+  ])
+]
 
 export const Editor = forwardRef<EditorRef, EditorProps>(({
   defaultValue,
@@ -29,11 +43,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
     const view = new EditorView({
       state: EditorState.create({
         doc: defaultValue,
-        extensions: [
-          basicSetup,
-          oneDark,
-          keymap.of([indentWithTab]),
-        ],
+        extensions,
       }),
     })
 

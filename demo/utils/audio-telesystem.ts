@@ -9,6 +9,7 @@ export interface MIDIEventEmitter {
 
 export interface MIDIEventHandler {
   send: (data: Uint8Array) => void;
+  dispose?: () => void;
 }
 
 export class AudioTeleSystem {
@@ -227,6 +228,7 @@ export class AudioTeleSystem {
   stop() {
     this.isRunning = false
     window.cancelAnimationFrame(this.rafHandle)
+    this.midiOutput?.dispose?.()
 
     if (this.midiInput) {
       this.midiInput.onmidimessage = null
