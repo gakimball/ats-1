@@ -5,15 +5,47 @@
   flex-flow: row nowrap;
   align-items: stretch;
   height: 100px;
-  border: var(--piano-border);
+  gap: 1px;
+}
+
+.keyWrapper {
+  position: relative;
+
+  &:nth-child(5) {
+    margin-right: 1px;
+  }
 }
 
 .key {
-  width: 20px;
-  text-align: center;
-  line-height: 100px;
+  --Piano-key-color: #fff;
+  --Piano-key-color-pressed: #ddd;
+  --Piano-key-text-color: #333;
 
-  &:not(:last-child) {
-    border-right: var(--piano-border);
+  flex: 1;
+  text-align: center;
+  line-height: 140px;
+  height: 100px;
+  width: 30px;
+  background-color: var(--Piano-key-color);
+  color: var(--Piano-key-text-color);
+  font-weight: bold;
+
+  &.isPressed {
+    background-color: var(--Piano-key-color-pressed);
   }
+}
+
+.isMinor {
+  --Piano-key-color: #222;
+  --Piano-key-color-pressed: #000;
+  --Piano-key-text-color: #fff;
+
+  position: absolute;
+  top: 0;
+  left: -10px;
+  line-height: 50px;
+  z-index: 1;
+  width: 20px;
+  height: 50px;
+  font-weight: normal;
 }
