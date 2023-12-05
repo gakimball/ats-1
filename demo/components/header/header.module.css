@@ -26,6 +26,7 @@
 .title {
   font-size: 18px;
   color: #FFE682;
+  margin-block: 2px 0;
 }
 
 .titlesub {
