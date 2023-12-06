@@ -1,7 +1,10 @@
+import { Midi } from '@tonejs/midi'
 import { NOTE_OFF, NOTE_ON } from './constants';
 import { EVM } from '../../src/evm'
 import { PALETTE } from './palette';
 import { FONT } from './font';
+import atsStdLib from 'bundle-text:./ats-stdlib.eno'
+import { TUPLE_TYPE } from '../../src/types/machine-type';
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
@@ -10,6 +13,18 @@ export interface MIDIEventEmitter {
 export interface MIDIEventHandler {
   send: (data: Uint8Array) => void;
   dispose?: () => void;
+}
+
+export interface MIDISpeakerNote {
+  pitch: number;
+  velocity: number;
+  duration: number;
+}
+
+export interface MIDISpeaker {
+  play: (midi: Midi) => void;
+  stop: () => void;
+  onNote: ((note: MIDISpeakerNote, isOn: boolean) => void) | null;
 }
 
 export class AudioTeleSystem {
@@ -23,7 +38,13 @@ export class AudioTeleSystem {
 
   private midiOutput?: MIDIEventHandler
 
+  private midiSpeaker?: MIDISpeaker
+
   private isRunning = true
+
+  private midiFiles: Midi[] = []
+
+  private songNotes = new Set<MIDISpeakerNote>()
 
   constructor(
     private readonly onError: (errorMessage: string) => void,
@@ -51,6 +72,7 @@ export class AudioTeleSystem {
     ctx: CanvasRenderingContext2D,
     midiInput: MIDIEventEmitter,
     midiOutput: MIDIEventHandler,
+    midiSpeaker: MIDISpeaker,
   ) {
     ctx.imageSmoothingEnabled = false
 
@@ -121,88 +143,62 @@ export class AudioTeleSystem {
       },
       'notes()': ({ push }) => {
         // ( -- notes[] )
-        push([...this.notes])
+        push(Array.from(this.notes))
+      },
+      'song()': ({ push }) => {
+        // ( -- notes[] )
+        push(Array.from(this.songNotes).map(note => ({
+          [TUPLE_TYPE]: 'note{}',
+          ...note,
+        })))
       },
       'connect-midi()': () => {
         // ( -- )
         this.connectMidi = true
       },
+      'play-midi()': ({ num, pop }) => {
+        // ( index -- )
+        const index = num(pop())
+        const midiFile = this.midiFiles[index]
+
+        if (!midiFile) {
+          throw new Error(`MIDI file ${index} does not exist`)
+        }
+
+        this.midiSpeaker?.play(midiFile)
+      },
+      'random()': ({ num, pop, push }) => {
+        // ( min max -- num )
+        const max = num(pop())
+        const min = num(pop())
+
+        push(
+          Math.floor(
+            (Math.random() * (max - min + 1)) + min
+          )
+        )
+      }
     })
 
     this.isRunning = true
-
-    evm.execute(`
-      tup vec{}
-        .x 0 .y 0
-      end
-
-      ( vec vec|num -- vec' )
-      fn vec/add()
-        let b!
-        let a!
-
-        b is-num if?
-          a ~.x b + .x!
-            ~.y b + .y!
-        else
-          a ~.x b .x + .x!
-            ~.y b .y + .y!
-        end
-      end
-
-      ( vec factor -- vec' )
-      fn vec/scale()
-        let b!
-        let a!
-
-        a ~.x b * .x!
-          !.y b * .y!
-      end
-
-      ( vec vec -- product )
-      fn vec/dot()
-        let b!
-        let a!
-
-        a .x b .x *
-        a .y b .y *
-        +
-      end
-
-      ( incident normal -- vec )
-      fn vec/bounce()
-        let normal!
-        let incident!
-
-        normal
-        incident normal vec/dot() 2 *
-        vec/scale()
-
-        ( todo: need support for negative numbers )
-      end
-
-      tup rect{}
-        .x 0 .y 0 .w 0 .h 0
-      end
-
-      0 0 128 128 rect{} const gfx/tv!
-      [ 0x0d 0x13 0x2c 0x30 ] const gfx/pal/default!
-      gfx/pal/default var gfx/pal!
-
-      ( vec color -- )
-      fn pixel()
-        let color!
-        let vec!
-
-        vec .x vec .y 1 1 rect{} color rect()
-      end
-
-      cls()
-    `)
-
     this.midiInput = midiInput
     this.midiOutput = midiOutput
+    this.midiSpeaker = midiSpeaker
     midiInput.onmidimessage = this.handleMidiInput
+    midiSpeaker.onNote = (note, isOn) => {
+      if (isOn) {
+        console.log('Note on')
+        this.songNotes.add(note)
+      } else {
+        console.log('Note off')
+        this.songNotes.delete(note)
+      }
+    }
+
+    evm.execute(atsStdLib)
+    evm.execute(`
+      [ ${PALETTE.map((_, index) => index).join(' ')} ] const gfx/colors!
+    `)
 
     try {
       evm.execute(script)
@@ -229,10 +225,17 @@ export class AudioTeleSystem {
     this.isRunning = false
     window.cancelAnimationFrame(this.rafHandle)
     this.midiOutput?.dispose?.()
+    this.midiSpeaker?.stop()
 
     if (this.midiInput) {
       this.midiInput.onmidimessage = null
     }
+  }
+
+  addMidiFile(buffer: ArrayBuffer) {
+    this.midiFiles.push(new Midi(buffer))
+
+    console.log(this.midiFiles)
   }
 
   private handleError(error: unknown) {

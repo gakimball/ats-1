@@ -380,6 +380,25 @@ export class EVM {
           this.push(list.includes(needle))
           break
         }
+        case 'concat': {
+          const b = this.list()
+          const a = this.list()
+
+          this.push([
+            ...a,
+            ...b,
+          ])
+          break
+        }
+        case 'range': {
+          const to = this.num()
+          const from = this.num()
+
+          this.push(
+            Array.from({ length: from - to + 1 }, (_, index) => from + index),
+          )
+          break
+        }
         case 'is-num': {
           const value = this.pop()
 
@@ -388,6 +407,17 @@ export class EVM {
           }
 
           this.push(typeof value === 'number')
+
+          break
+        }
+        case 'not': {
+          const value = this.pop()
+
+          if (typeof value !== 'boolean') {
+            throw new Error(`Expected a boolean, got ${getEVMType(value)}`)
+          }
+
+          this.push(!value)
 
           break
         }

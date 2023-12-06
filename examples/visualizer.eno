@@ -1,0 +1,41 @@
+0x21 0x2c range const colors!
+[ ] const lines!
+
+0 let frame!
+
+tup line{}
+  .x 0 .color 0 .framestart 0
+end
+
+0 play-midi()
+
+fn game()
+  cls()
+  song() [[ process-note() ]] each
+  lines [[ draw-line() ]] each
+
+  frame 1 + frame!
+end
+
+fn process-note()
+  .pitch let pitch!
+
+  lines pitch has not if?
+    pitch colors list-random() frame line{} let new-line!
+    lines [ new-line ] concat lines!
+  end
+end
+
+fn draw-line()
+  let line!
+
+  line .x 0 1 gfx/tv .h rect{} line .color rect{}
+end
+
+fn list-random()
+  let list!
+  list length 1 -
+    let max!
+
+  list 0 max random() index
+end

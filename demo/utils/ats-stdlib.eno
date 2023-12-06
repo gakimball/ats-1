@@ -1,0 +1,70 @@
+tup vec{}
+  .x 0 .y 0
+end
+
+( vec vec|num -- vec' )
+fn vec/add()
+  let b!
+  let a!
+
+  b is-num if?
+    a ~.x b + .x!
+      ~.y b + .y!
+  else
+    a ~.x b .x + .x!
+      ~.y b .y + .y!
+  end
+end
+
+( vec factor -- vec' )
+fn vec/scale()
+  let b!
+  let a!
+
+  a ~.x b * .x!
+    !.y b * .y!
+end
+
+( vec vec -- product )
+fn vec/dot()
+  let b!
+  let a!
+
+  a .x b .x *
+  a .y b .y *
+  +
+end
+
+( incident normal -- vec )
+fn vec/bounce()
+  let normal!
+  let incident!
+
+  normal
+  incident normal vec/dot() 2 *
+  vec/scale()
+
+  ( todo: need support for negative numbers )
+end
+
+tup rect{}
+  .x 0 .y 0 .w 0 .h 0
+end
+
+tup note{}
+  .pitch 0 .velocity 0 .duration 0
+end
+
+0 0 128 128 rect{} const gfx/tv!
+[ 0x0d 0x13 0x2c 0x30 ] const gfx/pal/default!
+gfx/pal/default var gfx/pal!
+
+( vec color -- )
+fn pixel()
+  let color!
+  let vec!
+
+  vec .x vec .y 1 1 rect{} color rect()
+end
+
+cls()

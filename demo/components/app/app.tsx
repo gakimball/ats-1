@@ -15,6 +15,8 @@ import bootScript from 'bundle-text:../../../examples/boot.eno'
 import { NavItem } from '../nav-item/nav-item'
 import s from './app.module.css'
 import { createFakeMidiOutput } from '../../utils/fake-midi-output'
+import { ChangeEvent } from 'preact/compat'
+import { createMidiSpeaker } from '../../utils/midi-speaker'
 
 type AppPane = 'palette'
 
@@ -29,6 +31,7 @@ export const App: FunctionComponent = () => {
   const drawingContextRef = useRef<CanvasRenderingContext2D>()
   const systemRef = useRef<AudioTeleSystem>()
   const fakeMidiRef = useRef(createFakeMidiInput())
+  const fileUploadRef = useRef<HTMLInputElement>(null)
 
   const connectMidi = useEventHandler(async () => {
     const access = await navigator.requestMIDIAccess()
@@ -46,7 +49,7 @@ export const App: FunctionComponent = () => {
     setIsRunning(false)
   })
 
-  const runGame = useEventHandler(() => {
+  const runGame = useEventHandler(async () => {
     const midiInput = (inputId
       ? midi?.inputs.get(inputId)
       : undefined)
@@ -57,6 +60,8 @@ export const App: FunctionComponent = () => {
     }
 
     const evm = new AudioTeleSystem(setErrorMessage)
+    const midiFile = await fileUploadRef.current?.files?.[0]?.arrayBuffer()
+    if (midiFile) { evm.addMidiFile(midiFile) }
     systemRef.current = evm
     setIsRunning(true)
 
@@ -65,6 +70,7 @@ export const App: FunctionComponent = () => {
       drawingContextRef.current,
       midiInput,
       createFakeMidiOutput(),
+      createMidiSpeaker(),
     )
   })
 
@@ -98,6 +104,11 @@ export const App: FunctionComponent = () => {
       <div className={s.container}>
         <div className={s.header}>
           <Header>
+            <input
+              ref={fileUploadRef}
+              type="file"
+              allow="midi"
+            />
             <NavItem onClick={() => togglePane('palette')}>
               Palette
             </NavItem>

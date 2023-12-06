@@ -237,8 +237,11 @@ The `debug` word logs to the console the current set of variables, functions, tu
 | `dup` | `a` | `a a` | |
 | `pop` | `a b` | `a` | |
 | `swap` | `a b` | `b a` | |
+| `not` | `a` | `!a` | |
 | `index` | `list idx` | `list[idx]` | `list list[idx]` |
 | `length` | `list` | `len(list)` | `list len(list)` |
+| `concat` | `list list` | `[...list ...list]` | |
+| `range` | `from to` | `[ from .. to ]` | |
 | `has` | `list value` | `list.has(value)` | `list list.has(value)` |
 | `is-num` | `value` | `is-num(value)` | `value is-num(value)` |
 | `map` | `list callback` | `list'` | |

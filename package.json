@@ -1,9 +1,7 @@
 {
   "scripts": {
     "start": "parcel -p 3000",
-    "prestart": "npm run clean",
     "build": "parcel build --public-url=/ats",
-    "prebuild": "npm run clean",
     "clean": "rm -rf dist",
     "deploy": "rsync -avz -e ssh ./dist/ root@geoff.zone:/var/www_projects/ats/",
     "repl": "ts-node --project tsconfig.repl.json ./bin/repl.ts",
@@ -19,6 +17,7 @@
     "@codemirror/state": "^6.3.2",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.22.1",
+    "@tonejs/midi": "^2.0.28",
     "@types/node": "^20.9.4",
     "codemirror": "^6.0.1",
     "copy-text-to-clipboard": "^3.2.0",
