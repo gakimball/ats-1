@@ -18,7 +18,9 @@ export const createFakeMidiOutput = (): MIDIEventHandler => {
       }
     },
     dispose: () => {
-      synth.dispose()
+      if (!synth.disposed) {
+        synth.dispose()
+      }
     }
   }
 }

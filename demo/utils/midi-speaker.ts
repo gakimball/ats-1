@@ -2,7 +2,7 @@ import * as Tone from 'tone';
 import { MIDISpeaker } from './audio-telesystem';
 
 export const createMidiSpeaker = (): MIDISpeaker => {
-  const synths: Tone.PolySynth[] = []
+  let synths: Tone.PolySynth[] = []
 
   return {
     // Borrowed from: https://github.com/Tonejs/Midi/blob/master/examples/load.html
@@ -46,7 +46,12 @@ export const createMidiSpeaker = (): MIDISpeaker => {
       })
     },
     stop: () => {
-      synths.forEach(synth => synth.dispose())
+      synths.forEach(synth => {
+        if (!synth.disposed) {
+          synth.dispose()
+        }
+      })
+      synths = []
     },
     onNote: null,
   }
