@@ -2,11 +2,10 @@
   "scripts": {
     "start": "parcel -p 3000",
     "build": "parcel build --public-url=/ats",
-    "clean": "rm -rf dist",
     "deploy": "rsync -avz -e ssh ./dist/ root@geoff.zone:/var/www_projects/ats/",
     "repl": "ts-node --project tsconfig.repl.json ./bin/repl.ts",
     "eval": "ts-node --project tsconfig.repl.json ./bin/eval.ts",
-    "test": "ava"
+    "test": "node --import tsx --test src/*.test.ts"
   },
   "source": "demo/index.html",
   "browserslist": "> 0.5%, last 2 versions, not dead",
@@ -28,7 +27,6 @@
   },
   "devDependencies": {
     "@parcel/transformer-inline-string": "^2.10.3",
-    "ava": "^5.3.1",
     "tsx": "^4.6.1"
   },
   "alias": {
@@ -42,16 +40,5 @@
     "drafts": {
       "nesting": true
     }
-  },
-  "ava": {
-    "files": [
-      "./src/**/*.test.ts"
-    ],
-    "extensions": {
-      "ts": "module"
-    },
-    "nodeArguments": [
-      "--loader=tsx"
-    ]
   }
 }

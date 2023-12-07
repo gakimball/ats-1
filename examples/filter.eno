@@ -1,0 +1,16 @@
+fn filter()
+  let callback! let original-list!
+  [ ] let filtered-list!
+
+  original-list [[
+    let item!
+
+    item callback call if?
+      filtered-list [ item ] concat filtered-list!
+    end
+  ]] each
+
+  filtered-list
+end
+
+[ 1 :true 2 :false ] [[ is-num ]] filter()

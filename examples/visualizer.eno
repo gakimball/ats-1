@@ -1,9 +1,13 @@
 0x21 0x2c range const colors!
-[ ] const lines!
-
-0 let frame!
+[ ] var lines!
+[ ] var waves!
+0 var frame!
 
 tup line{}
+  .x 0 .color 0
+end
+
+tup wave{}
   .x 0 .color 0 .framestart 0
 end
 
@@ -11,31 +15,61 @@ end
 
 fn game()
   cls()
+
   song() [[ process-note() ]] each
+  lines [[ .x pitches() swap has ]] filter() lines!
   lines [[ draw-line() ]] each
 
   frame 1 + frame!
 end
 
+fn pitches()
+  song() [[ .pitch ]] map
+end
+
+( note{} -- )
 fn process-note()
   .pitch let pitch!
+  lines [[ .x ]] map let active-lines!
 
-  lines pitch has not if?
-    pitch colors list-random() frame line{} let new-line!
+  active-lines pitch has not if?
+    pitch colors list-random() line{}
+      let new-line!
     lines [ new-line ] concat lines!
+
+    new-line .x new-line .color frame wave{}
+      let new-wave!
+    waves [ new-wave ] concat waves!
   end
 end
 
+( line{} -- )
 fn draw-line()
   let line!
 
-  line .x 0 1 gfx/tv .h rect{} line .color rect{}
+  line .x 0 1 gfx/tv .h rect{} line .color rect()
 end
 
+( -- color )
 fn list-random()
   let list!
   list length 1 -
     let max!
 
   list 0 max random() index
+end
+
+fn filter()
+  let callback! let original-list!
+  [ ] let filtered-list!
+
+  original-list [[
+    let item!
+
+    item callback call if?
+      filtered-list [ item ] concat filtered-list!
+    end
+  ]] each
+
+  filtered-list
 end

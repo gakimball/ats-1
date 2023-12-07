@@ -1,4 +1,5 @@
 import { EVMCallback, EVMClosure, EVMTuple, EVMType, EVM_CALLBACK, TUPLE_TYPE } from './types/machine-type';
+import { EVMError } from './utils/evm-error';
 import { getElseOrEndToken } from './utils/get-else-or-end-token';
 import { getEndTokenIndex } from './utils/get-end-token';
 import { getEVMType } from './utils/get-evm-type';
@@ -132,7 +133,7 @@ export class EVM {
     return [...this.stack]
   }
 
-  execute(input: string, outerClosure: EVMClosure = {}) {
+  execute(input: string, outerClosures: EVMClosure[] = [this.variables]) {
     const tokens = input.trim().replace(/\([^)]+\)/g, '').split(/\s+/)
     let index = -1
     const contexts: EVMContext[] = []
@@ -142,13 +143,19 @@ export class EVM {
       index = 1
     }
 
-    const closure: EVMClosure = {}
-    const closures = [closure, outerClosure, this.variables]
+    const innerClosure: EVMClosure = {}
+    const closures = [innerClosure, ...outerClosures]
 
     while (index < tokens.length - 1) {
       index++
       let token = tokens[index]
       const context = contexts.at(-1)
+      const errorData = {
+        closures,
+        index,
+        token: tokens[index],
+        contexts,
+      }
 
       if (context?.type === 'list') {
         if (token === ']') {
@@ -160,7 +167,7 @@ export class EVM {
           if (value !== undefined) {
             context.value.push(value)
           } else {
-            throw new Error(`Expected a value for a list, got ${token}`)
+            throw new EVMError(`Expected a value for a list, got ${token}`, errorData)
           }
         }
 
@@ -170,7 +177,7 @@ export class EVM {
           this.push({
             [EVM_CALLBACK]: true,
             script: context.tokens.join(' '),
-            closure,
+            closures,
           })
           contexts.pop()
         } else {
@@ -259,7 +266,7 @@ export class EVM {
           let defaultValue: EVMType = 0
 
           if (!varName) {
-            throw new Error(`Expected a variable name after ${token}`)
+            throw new EVMError(`Expected a variable name after ${token}`, errorData)
           }
 
           if (varName.endsWith('!')) {
@@ -268,7 +275,7 @@ export class EVM {
           }
 
           if ((ENO_WORDS as string[]).includes(varName)) {
-            throw new Error(`${varName} is a reserved word`)
+            throw new EVMError(`${varName} is a reserved word`, errorData)
           }
 
           if (isGlobal) {
@@ -278,7 +285,7 @@ export class EVM {
               this.constants.push(varName)
             }
           } else {
-            closure[varName] = defaultValue
+            innerClosure[varName] = defaultValue
           }
 
           break
@@ -288,7 +295,7 @@ export class EVM {
           const fnStartIndex = index + 1
 
           if (!fnName.endsWith('()')) {
-            throw new Error(`Function ${fnName} must end in ()`)
+            throw new EVMError(`Function ${fnName} must end in ()`, errorData)
           }
 
           index = getEndTokenIndex(tokens, index, token)
@@ -300,7 +307,7 @@ export class EVM {
           const tupName = tokens[++index]
 
           if (!tupName.endsWith('{}')) {
-            throw new Error(`Tuple ${tupName} must end in {}`)
+            throw new EVMError(`Tuple ${tupName} must end in {}`, errorData)
           }
 
           let prop: string | undefined
@@ -317,7 +324,7 @@ export class EVM {
 
             if (prop === undefined) {
               if (!subtoken.startsWith('.')) {
-                throw new Error(`Expected tuple ${tupName} property ${subtoken} to start with a "."`)
+                throw new EVMError(`Expected tuple ${tupName} property ${subtoken} to start with a "."`, errorData)
               }
 
               prop = subtoken.slice(1)
@@ -326,7 +333,7 @@ export class EVM {
               const value = this.parseValue(subtoken, closures)
 
               if (value === undefined) {
-                throw new Error(`Expected value for tuple ${tupName} property ${subtoken}, got ${subtoken}`)
+                throw new EVMError(`Expected value for tuple ${tupName} property ${subtoken}, got ${subtoken}`, errorData)
               }
 
               tuple[prop] = value
@@ -345,7 +352,9 @@ export class EVM {
             variables: this.variables,
             functions: this.functions,
             tuples: this.tuples,
+            closures,
           })
+          debugger
           break
         }
         case 'index': {
@@ -395,7 +404,7 @@ export class EVM {
           const from = this.num()
 
           this.push(
-            Array.from({ length: from - to + 1 }, (_, index) => from + index),
+            Array.from({ length: to - from + 1 }, (_, index) => from + index),
           )
           break
         }
@@ -414,7 +423,7 @@ export class EVM {
           const value = this.pop()
 
           if (typeof value !== 'boolean') {
-            throw new Error(`Expected a boolean, got ${getEVMType(value)}`)
+            throw new EVMError(`Expected a boolean, got ${getEVMType(value)}`, errorData)
           }
 
           this.push(!value)
@@ -429,7 +438,7 @@ export class EVM {
           break
         }
         case ']': {
-          throw new Error('No matching [ to go with ]')
+          throw new EVMError('No matching [ to go with ]', errorData)
         }
         case '[[': {
           contexts.push({
@@ -439,7 +448,7 @@ export class EVM {
           break
         }
         case ']]': {
-          throw new Error('No matching [[ to go with ]]')
+          throw new EVMError('No matching [[ to go with ]]', errorData)
         }
         case 'map':
         case 'each': {
@@ -448,7 +457,7 @@ export class EVM {
 
           this.list().forEach(item => {
             this.push(item)
-            this.execute(callback.script, closure)
+            this.execute(callback.script, closures)
             if (token === 'map') {
               newList.push(this.pop())
             }
@@ -460,7 +469,7 @@ export class EVM {
           break
         }
         case 'call': {
-          this.execute(this.callback().script, closure)
+          this.execute(this.callback().script, closures)
           break
         }
         default:
@@ -489,13 +498,13 @@ export class EVM {
             const varName = token.slice(0, -1)
 
             if (this.isConstantVariable(varName)) {
-              throw new Error(`Cannot reassign constant ${varName}`)
+              throw new EVMError(`Cannot reassign constant ${varName}`, errorData)
             }
 
             const variable = resolveVariable(varName, closures)
 
             if (!variable) {
-              throw new Error(`Cannot assign to unknown variable ${varName}`)
+              throw new EVMError(`Cannot assign to unknown variable ${varName}`, errorData)
             }
 
             closures[variable.index][varName] = this.pop()
@@ -520,7 +529,8 @@ export class EVM {
             if (value !== undefined) {
               this.push(value)
             } else {
-              throw new Error(`Unknown word ${token}`)
+              debugger
+              throw new EVMError(`Unknown word ${token}`, errorData)
             }
           }
       }
@@ -621,7 +631,15 @@ export class EVM {
 
   private callFunction(funcName: string) {
     if (funcName in this.syscalls) {
-      this.syscalls[funcName](this.syscallArgs)
+      try {
+        this.syscalls[funcName](this.syscallArgs)
+      } catch (error: unknown) {
+        const message = error instanceof Error
+          ? error.message
+          : '(unknown error)'
+
+        throw new Error(`In syscall ${funcName}: ${message}`)
+      }
     } else if (funcName in this.functions) {
       this.execute(this.functions[funcName])
     } else {

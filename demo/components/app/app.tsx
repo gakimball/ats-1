@@ -11,12 +11,13 @@ import { PaletteViewer } from '../palette-viewer/palette-viewer'
 import { PALETTE } from '../../utils/palette'
 import { Editor, EditorRef } from '../editor/editor'
 import { Header } from '../header/header'
-import bootScript from 'bundle-text:../../../examples/boot.eno'
+import bootScript from 'bundle-text:../../../examples/visualizer.eno'
 import { NavItem } from '../nav-item/nav-item'
-import s from './app.module.css'
 import { createFakeMidiOutput } from '../../utils/fake-midi-output'
 import { ChangeEvent } from 'preact/compat'
 import { createMidiSpeaker } from '../../utils/midi-speaker'
+import s from './app.module.css'
+import { EVMError } from '../../../src/utils/evm-error'
 
 type AppPane = 'palette'
 
@@ -24,7 +25,7 @@ export const App: FunctionComponent = () => {
   const [midi, setMidi] = useState<MIDIAccess>()
   const [inputId, setInputId] = useState<string>()
   const [isRunning, setIsRunning] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string>()
+  const [error, setError] = useState<EVMError>()
   const [visiblePane, setVisiblePane] = useState<AppPane>()
 
   const editorRef = useRef<EditorRef>(null)
@@ -59,7 +60,7 @@ export const App: FunctionComponent = () => {
       return
     }
 
-    const evm = new AudioTeleSystem(setErrorMessage)
+    const evm = new AudioTeleSystem(setError)
     const midiFile = await fileUploadRef.current?.files?.[0]?.arrayBuffer()
     if (midiFile) { evm.addMidiFile(midiFile) }
     systemRef.current = evm
@@ -116,9 +117,12 @@ export const App: FunctionComponent = () => {
         </div>
         <div className={s.left}>
           <Editor ref={editorRef} defaultValue={bootScript} />
-          {errorMessage && (
+          {error && (
             <div className={s.error}>
-              {errorMessage}
+              {error.message}
+              <pre>
+                {JSON.stringify(error.data, null, 2)}
+              </pre>
             </div>
           )}
           <button

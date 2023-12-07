@@ -5,6 +5,7 @@ import { PALETTE } from './palette';
 import { FONT } from './font';
 import atsStdLib from 'bundle-text:./ats-stdlib.eno'
 import { TUPLE_TYPE } from '../../src/types/machine-type';
+import { EVMError } from '../../src/utils/evm-error';
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
@@ -47,7 +48,7 @@ export class AudioTeleSystem {
   private songNotes = new Set<MIDISpeakerNote>()
 
   constructor(
-    private readonly onError: (errorMessage: string) => void,
+    private readonly onError: (error: EVMError) => void,
   ) {}
 
   handleMidiInput = (evt: Event) => {
@@ -187,10 +188,8 @@ export class AudioTeleSystem {
     midiInput.onmidimessage = this.handleMidiInput
     midiSpeaker.onNote = (note, isOn) => {
       if (isOn) {
-        console.log('Note on')
         this.songNotes.add(note)
       } else {
-        console.log('Note off')
         this.songNotes.delete(note)
       }
     }
@@ -241,8 +240,8 @@ export class AudioTeleSystem {
   private handleError(error: unknown) {
     this.isRunning = false
 
-    if (error instanceof Error) {
-      this.onError(error.message)
+    if (error instanceof EVMError) {
+      this.onError(error)
     }
   }
 }

@@ -9,7 +9,7 @@ export interface EVMClosure {
 export type EVMCallback = {
   [EVM_CALLBACK]: true;
   script: string;
-  closure: EVMClosure;
+  closures: EVMClosure[];
 }
 
 export type EVMScalar = number | boolean

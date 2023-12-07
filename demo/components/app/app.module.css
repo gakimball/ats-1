@@ -44,6 +44,8 @@
   border: 1px solid #ccc;
   color: red;
   padding: 10px;
+  max-height: 225px;
+  overflow-y: auto;
 }
 
 .button {
