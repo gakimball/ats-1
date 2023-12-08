@@ -1,0 +1,27 @@
+.tape {
+  display: block;
+  width: 250px;
+  background-color: transparent;
+  cursor: pointer;
+  text-align: left;
+
+  & + & {
+    margin-top: 16px;
+  }
+}
+
+.name {
+  font-size: 16px;
+  font-weight: bold;
+  margin-block: 0 4px;
+
+  .tape:hover & {
+    color: #FFE682;
+  }
+}
+
+.description {
+  font-size: 14px;
+  color: #ccc;
+  margin: 0;
+}

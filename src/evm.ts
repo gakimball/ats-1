@@ -399,6 +399,15 @@ export class EVM {
           ])
           break
         }
+        case 'append': {
+          const value = this.pop()
+          const list = this.list()
+
+          this.push([
+            ...list,
+            value,
+          ])
+        }
         case 'range': {
           const to = this.num()
           const from = this.num()
@@ -548,7 +557,7 @@ export class EVM {
    * token can't be parsed as a scalar, and no variable exists matching its name.
    */
   private parseValue(token: string, closures: EVMClosure[]): EVMType | undefined {
-    if (token.match(/^\d+$/)) {
+    if (token.match(/^\-?\d+$/)) {
       return Number.parseInt(token, 10)
     }
 

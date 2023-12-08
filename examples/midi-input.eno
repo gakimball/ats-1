@@ -1,0 +1,11 @@
+gfx/tv .h const h!
+
+connect-midi()
+
+fn game()
+  cls()
+
+  notes() [[
+    0 1 h rect{} 0x21 rect()
+  ]] each
+end

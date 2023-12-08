@@ -65,5 +65,16 @@
   top: 50px;
   right: 0;
   z-index: 1;
-  background-color: #222;
+  background-color: #111;
+  padding: 10px;
+
+  &:not(.isOpen) {
+    display: none;
+  }
+}
+
+.notice {
+  margin-block: 10px 0;
+  font-style: italic;
+  color: #ccc;
 }

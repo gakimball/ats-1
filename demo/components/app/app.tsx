@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact'
 import { useState, useRef } from 'preact/hooks'
 import copyTextToClipboard from 'copy-text-to-clipboard'
+import classnames from 'classnames/bind'
 import { MIDIStatus } from '../midi-status/midi-status'
 import { AudioTeleSystem } from '../../utils/audio-telesystem'
 import { useEventHandler } from '../../hooks/use-event-handler'
@@ -11,15 +12,18 @@ import { PaletteViewer } from '../palette-viewer/palette-viewer'
 import { PALETTE } from '../../utils/palette'
 import { Editor, EditorRef } from '../editor/editor'
 import { Header } from '../header/header'
-import bootScript from 'bundle-text:../../../examples/visualizer.eno'
 import { NavItem } from '../nav-item/nav-item'
 import { createFakeMidiOutput } from '../../utils/fake-midi-output'
 import { ChangeEvent } from 'preact/compat'
 import { createMidiSpeaker } from '../../utils/midi-speaker'
-import s from './app.module.css'
 import { EVMError } from '../../../src/utils/evm-error'
+import { TapeList } from '../tape-list/tape-list'
+import { TAPES, TapeDefinition } from '../../utils/tapes'
+import s from './app.module.css'
 
-type AppPane = 'palette'
+type AppPane = 'palette' | 'tapes' | 'midi'
+
+const cls = classnames.bind(s)
 
 export const App: FunctionComponent = () => {
   const [midi, setMidi] = useState<MIDIAccess>()
@@ -27,6 +31,7 @@ export const App: FunctionComponent = () => {
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<EVMError>()
   const [visiblePane, setVisiblePane] = useState<AppPane>()
+  const [tape, setTape] = useState(TAPES[0])
 
   const editorRef = useRef<EditorRef>(null)
   const drawingContextRef = useRef<CanvasRenderingContext2D>()
@@ -105,18 +110,23 @@ export const App: FunctionComponent = () => {
       <div className={s.container}>
         <div className={s.header}>
           <Header>
-            <input
-              ref={fileUploadRef}
-              type="file"
-              allow="midi"
-            />
+            <NavItem onClick={() => togglePane('tapes')}>
+              Tapes
+            </NavItem>
+            <NavItem onClick={() => togglePane('midi')}>
+              Load MIDI
+            </NavItem>
             <NavItem onClick={() => togglePane('palette')}>
               Palette
             </NavItem>
           </Header>
         </div>
         <div className={s.left}>
-          <Editor ref={editorRef} defaultValue={bootScript} />
+          <Editor
+            key={tape.name}
+            ref={editorRef}
+            defaultValue={tape.contents}
+          />
           {error && (
             <div className={s.error}>
               {error.message}
@@ -157,16 +167,29 @@ export const App: FunctionComponent = () => {
           )}
         </div>
       </div>
-      {visiblePane && (
-        <div className={s.pane}>
-          {visiblePane === 'palette' && (
-            <PaletteViewer
-              colors={PALETTE}
-              onSelectColor={copyColor}
-            />
-          )}
-        </div>
-      )}
+      <div className={cls('pane', { isOpen: visiblePane === 'tapes' })}>
+        <TapeList
+          onSelectTape={tape => {
+            setTape(tape)
+            setVisiblePane(undefined)
+          }}
+        />
+      </div>
+      <div className={cls('pane', { isOpen: visiblePane === 'midi' })}>
+        <input
+          ref={fileUploadRef}
+          type="file"
+          accept=".mid,.midi,audio/midi,audio/x-midi"
+        />
+        <p className={s.notice}>Files added here are kept local.</p>
+      </div>
+      <div className={cls('pane', { isOpen: visiblePane === 'palette' })}>
+        <PaletteViewer
+          colors={PALETTE}
+          onSelectColor={copyColor}
+        />
+        <p className={s.notice}>Select a color to copy its hex ID to the clipboard.</p>
+      </div>
     </>
   )
 }

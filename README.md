@@ -241,6 +241,7 @@ The `debug` word logs to the console the current set of variables, functions, tu
 | `index` | `list idx` | `list[idx]` | `list list[idx]` |
 | `length` | `list` | `len(list)` | `list len(list)` |
 | `concat` | `list list` | `[...list ...list]` | |
+| `append` | `list val` | `[...list val]` | |
 | `range` | `from to` | `[ from .. to ]` | |
 | `has` | `list value` | `list.has(value)` | `list list.has(value)` |
 | `is-num` | `value` | `is-num(value)` | `value is-num(value)` |
