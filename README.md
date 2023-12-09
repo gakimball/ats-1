@@ -46,7 +46,6 @@ Every value on the stack has a type. Stack values do not have a size limit.
 - Numbers: `15` (decimal) or `0xf` (hexadecimal)
 - Booleans: `:true` and `:false`
 - Lists: `[ 1 2 3 ]`
-  - Lists can only contain scalar values (numbers and booleans)
 - Tuples: `0 0 vec{}`
 - Callbacks: `[[ dup * ]]`
 
@@ -137,6 +136,25 @@ end
 
 ( Execute it: 2 => 4 )
 2 square()
+```
+
+### Lists
+
+Lists are flexible-sized arrays of data. A list can contain mixed values of any type.
+
+```
+[ :true :false 0 0x1 -2 ]
+
+( A list can contain nested lists, or a callback )
+[ [ 1 2 3 ] [[ * 2 ]] ]
+```
+
+Initializing an array places it on the stack. When defining an array's contents, you can only use values; you cannot perform stack operations. To insert a tuple into an array, store it in a variable first.
+
+```
+0 0 vec{} let vector!
+
+[ vector ]
 ```
 
 ### Callbacks

@@ -1,4 +1,5 @@
 import { EVMCallback, EVMClosure, EVMTuple, EVMType, EVM_CALLBACK, TUPLE_TYPE } from './types/machine-type';
+import { EVMContext, createEVMContext, finalizeEVMContext, parseEVMContextMarker } from './utils/evm-context';
 import { EVMError } from './utils/evm-error';
 import { getElseOrEndToken } from './utils/get-else-or-end-token';
 import { getEndTokenIndex } from './utils/get-end-token';
@@ -20,14 +21,6 @@ interface EVMSyscallArgs {
 }
 
 export type EVMSyscall = (args: EVMSyscallArgs) => void
-
-type EVMContext = {
-  type: 'list';
-  value: EVMType[];
-} | {
-  type: 'callback';
-  tokens: string[];
-}
 
 interface EVMTupleBlueprint {
   [TUPLE_ORDER]: string[];
@@ -157,34 +150,58 @@ export class EVM {
         contexts,
       }
 
-      if (context?.type === 'list') {
-        if (token === ']') {
-          this.push(context.value)
-          contexts.pop()
-        } else {
-          const value = this.parseValue(token, closures)
+      console.log(token, context)
 
-          if (value !== undefined) {
-            context.value.push(value)
+      const newContext = parseEVMContextMarker(token)
+
+      // TODO: nesting arrays inside callbacks does not work; callback context should not execute
+      // any tokens
+
+      if (newContext) {
+        if (newContext.position === 'start') {
+          // New context was opened
+          contexts.push(createEVMContext(newContext.type))
+          continue
+        } else if (newContext.type !== context?.type) {
+          // Context was closed without being opened
+          throw new EVMError(`Unexpected ${token} without matching start`, errorData)
+        } else {
+          // Context was correctly opened then closed
+          const finalValue = finalizeEVMContext(context, closures)
+
+          contexts.pop()
+
+          const outerContext = contexts.at(-1)
+
+          if (outerContext?.type === 'list') {
+            // When creating a list within a list, do not place the inner list on
+            // the stack; append it to the outer list instead
+            outerContext.value.push(finalValue)
           } else {
-            throw new EVMError(`Expected a value for a list, got ${token}`, errorData)
+            this.push(finalValue)
+          }
+
+          continue
+        }
+      } else {
+        switch (context?.type) {
+          case 'list': {
+            const value = this.parseValue(token, closures)
+
+            if (value !== undefined) {
+              context.value.push(value)
+            } else {
+              throw new EVMError(`Expected a value for a list, got ${token}`, errorData)
+            }
+
+            continue
+          }
+          case 'callback': {
+            context.tokens.push(token)
+
+            continue
           }
         }
-
-        continue
-      } else if (context?.type === 'callback') {
-        if (token === ']]') {
-          this.push({
-            [EVM_CALLBACK]: true,
-            script: context.tokens.join(' '),
-            closures,
-          })
-          contexts.pop()
-        } else {
-          context.tokens.push(token)
-        }
-
-        continue
       }
 
       const isKeepMode = token.startsWith('~')
@@ -438,26 +455,6 @@ export class EVM {
           this.push(!value)
 
           break
-        }
-        case '[': {
-          contexts.push({
-            type: 'list',
-            value: [],
-          })
-          break
-        }
-        case ']': {
-          throw new EVMError('No matching [ to go with ]', errorData)
-        }
-        case '[[': {
-          contexts.push({
-            type: 'callback',
-            tokens: [],
-          })
-          break
-        }
-        case ']]': {
-          throw new EVMError('No matching [[ to go with ]]', errorData)
         }
         case 'map':
         case 'each': {
