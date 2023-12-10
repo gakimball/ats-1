@@ -1,7 +1,8 @@
-[ 0x41 0x54 0x53 0x2D 0x31 ] const boot/ats/text!
-[ 0x0d 0x28 0x0d 0x0d ] const boot/ats/pal!
-[ 0x2c 0x23 0x25 ] const boot/rainbow/colors!
-14 const boot/rainbow/width!
+[ 0x41 0x54 0x53 0x2D 0x31 ] const ats/text!
+[ 0x0d 0x28 0x0d 0x0d ] const ats/pal!
+[ 0x2c 0x23 0x25 ] const rainbow/colors!
+14 const rainbow/width!
+gfx/tv .h const rainbow/max-height!
 
 0 var frame!
 
@@ -11,31 +12,42 @@ fn game()
   [ 0 1 2 ] [[ draw-rainbow() ]] each
 
   frame 120 - if?
-    42 56 boot/rainbow/width 3 * 16 rect{} 0x0d rect()
-    boot/ats/pal gfx/pal!
-    44 60 vec{} boot/ats/text text()
-    gfx/pal/default gfx/pal!
+    draw-text()
   end
 
   frame 1 + frame!
 end
 
+( n -- )
 fn draw-rainbow()
   let idx!
-  boot/rainbow/width idx * 42 +
-    let x!
-  15 idx *
-    let delay!
-  frame delay - 2 * gfx/tv .h min()
-    let height!
+  15 idx * let delay!
 
-  height if?
-    x 0 boot/rainbow/width height rect{}
-    boot/rainbow/colors idx index
+  rect{->}
+    rainbow/width idx * 42 +
+      .x!
+    rainbow/width
+      .w!
+    frame delay - 2 * rainbow/max-height min()
+      .h!
+
+  ~.h if?
+    rainbow/colors idx index
     rect()
+  else
+    pop
   end
 end
 
+( -- )
+fn draw-text()
+  42 56 rainbow/width 3 * 16 rect{} 0x0d rect()
+  ats/pal gfx/pal!
+  44 60 vec{} ats/text text()
+  gfx/pal/default gfx/pal!
+end
+
+( a b -- min )
 fn min()
   let b! let a!
   a b - if? b else a end

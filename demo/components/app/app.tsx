@@ -18,7 +18,7 @@ import { ChangeEvent } from 'preact/compat'
 import { createMidiSpeaker } from '../../utils/midi-speaker'
 import { EVMError } from '../../../src/utils/evm-error'
 import { TapeList } from '../tape-list/tape-list'
-import { TAPES, TapeDefinition } from '../../utils/tapes'
+import { TAPES } from '../../utils/tapes'
 import s from './app.module.css'
 
 type AppPane = 'palette' | 'tapes' | 'midi'

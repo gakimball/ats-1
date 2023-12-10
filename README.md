@@ -208,7 +208,7 @@ Use the accessor syntax (leading `.`) to access a property value, which consumes
 .x
 ```
 
-To keep the tuple on the stack, use keep mode by prepending a `~`:
+To keep the tuple on the stack after accessing a value, use keep mode by prepending a `~`:
 
 ```
 ( num num -- point{} )
@@ -226,6 +226,16 @@ To assign a value to a tuple, append a `!` to the property. Tuples are immutable
 
 ( point{} num -- point{}' )
 6 .x!
+```
+
+The `{->}` syntax allows you to create a "blank" instance of a tuple, where the default values are used. You can then set the specific properties you want to change.
+
+```
+tup rect{}
+  .x 0 .y 0 .w 0 .h 0
+end
+
+rect{->} 16 .w! 9 .h!
 ```
 
 ### Keep mode

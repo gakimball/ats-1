@@ -1,4 +1,4 @@
-import bootScript from 'bundle-text:../../examples/midi-input.eno'
+import bootScript from 'bundle-text:../../examples/boot.eno'
 import visualizerScript from 'bundle-text:../../examples/visualizer.eno'
 import midiInputScript from 'bundle-text:../../examples/midi-input.eno'
 

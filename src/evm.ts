@@ -150,8 +150,6 @@ export class EVM {
         contexts,
       }
 
-      console.log(token, context)
-
       const newContext = parseEVMContextMarker(token)
 
       // TODO: nesting arrays inside callbacks does not work; callback context should not execute
@@ -529,6 +527,18 @@ export class EVM {
 
               this.push(tuple)
             }
+          } else if (token.endsWith('{->}')) {
+            const tupleName = token.slice(0, -4) + '{}'
+            const blueprint = this.tuples[tupleName]
+            const tuple: EVMTuple = {
+              [TUPLE_TYPE]: tupleName,
+            }
+
+            blueprint[TUPLE_ORDER].forEach(key => {
+              tuple[key] = blueprint[key]
+            })
+
+            this.push(tuple)
           } else {
             const value = this.parseValue(token, closures)
 

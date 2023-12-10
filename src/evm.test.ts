@@ -94,7 +94,7 @@ describe('List syntax', () => {
 })
 
 describe('Tuple syntax', () => {
-  test('Tuple initialization', assert(`
+  test('Tuple initialization (with props)', assert(`
     tup vec{}
       .x 0 .y 0
     end
@@ -104,6 +104,18 @@ describe('Tuple syntax', () => {
     [TUPLE_TYPE]: 'vec{}',
     x: 16,
     y: 9,
+  }]))
+
+  test('Tuple initialization (with defaults)', assert(`
+    tup vec{}
+      .x 0 .y 0
+    end
+
+    vec{->}
+  `, [{
+    [TUPLE_TYPE]: 'vec{}',
+    x: 0,
+    y: 0,
   }]))
 
   test('Tuple get', assert(`${mockTuple} .value`, [0]))
