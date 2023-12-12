@@ -12,7 +12,7 @@ export type EVMCallback = {
   closures: EVMClosure[];
 }
 
-export type EVMScalar = number | boolean
+export type EVMScalar = number | boolean | string
 
 export type EVMTuple = {
   [TUPLE_TYPE]: string;

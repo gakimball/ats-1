@@ -15,5 +15,7 @@ export const getEVMType = (value: EVMType) => {
       return 'number'
     case 'boolean':
       return 'boolean'
+    case 'string':
+      return 'string'
   }
 }

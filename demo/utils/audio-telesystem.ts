@@ -119,15 +119,15 @@ export class AudioTeleSystem {
         ctx.closePath()
         ctx.stroke()
       },
-      'text()': ({ pop, list, tuple, num, execute }) => {
-        // ( vec{} chars[] -- )
-        const chars = list(pop())
+      'text()': ({ pop, tuple, num, string, execute }) => {
+        // ( vec{} string -- )
+        const chars = string(pop()).split('')
         const vec = tuple('vec{}', pop())
         const x = num(vec.x)
         const y = num(vec.y)
 
         chars.forEach((value, index) => {
-          const code = num(value)
+          const code = value.charCodeAt(0)
           const sprite = [
             ...FONT[code],
             ...Array(8).fill(0),

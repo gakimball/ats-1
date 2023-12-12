@@ -18,6 +18,7 @@ interface EVMSyscallArgs {
   list: (value: EVMType) => EVMType[];
   execute: (script: string) => void;
   tuple: (type: string, value: EVMType) => EVMTuple;
+  string: (value: EVMType) => string;
 }
 
 export type EVMSyscall = (args: EVMSyscallArgs) => void
@@ -114,6 +115,17 @@ export class EVM {
      * @returns The current stack formatted as a string.
      */
     execute: script => this.execute(script),
+    /**
+     * Assert that `value` is a string.
+     * @throws Throws if `value` is not a string.
+     */
+    string: value => {
+      if (typeof value !== 'string') {
+        throw new Error(`Syscall error, expected a string, got ${getEVMType(value)}`)
+      }
+
+      return value
+    },
   }
 
   constructor(
@@ -150,22 +162,31 @@ export class EVM {
         contexts,
       }
 
-      const newContext = parseEVMContextMarker(token)
+      const contextMarker = parseEVMContextMarker(token)
+      const shouldProcessContextMarker = (
+        // Process a context marker if it exists...
+        contextMarker
+        && (
+          // ...and the current context is not a callback (because the tokens inside a callback
+          // are parsed upon execution of the callback)...
+          context?.type !== 'callback'
+          || (
+            // ...unless the context marker is `]]`, indicating the end of the callback
+            // NOTE: this logic does not allow for nested callbacks
+            contextMarker.type === 'callback'
+            && contextMarker.position === 'end'
+          )
+        )
+      )
 
-      // TODO: nesting arrays inside callbacks does not work; callback context should not execute
-      // any tokens
-
-      if (newContext) {
-        if (newContext.position === 'start') {
-          // New context was opened
-          contexts.push(createEVMContext(newContext.type))
-          continue
-        } else if (newContext.type !== context?.type) {
-          // Context was closed without being opened
-          throw new EVMError(`Unexpected ${token} without matching start`, errorData)
-        } else {
+      if (shouldProcessContextMarker) {
+        const closeContext = (context: EVMContext, isSelfClosing = false) => {
           // Context was correctly opened then closed
-          const finalValue = finalizeEVMContext(context, closures)
+          let finalValue = finalizeEVMContext(context, closures)
+
+          if (context.type === 'string' && !isSelfClosing) {
+            finalValue += ` ${token.slice(0, -1)}`
+          }
 
           contexts.pop()
 
@@ -178,7 +199,30 @@ export class EVM {
           } else {
             this.push(finalValue)
           }
+        }
 
+        if (contextMarker.position === 'start') {
+          // New context was opened
+          const newContext = createEVMContext(contextMarker.type)
+
+          contexts.push(newContext)
+
+          if (newContext.type === 'string') {
+            newContext.value = token.slice(1) // Remove the leading quote mark
+
+            // Handle one-word strings
+            if (newContext.value.endsWith('\'')) {
+              newContext.value = newContext.value.slice(0, -1)
+              closeContext(newContext, true)
+            }
+          }
+
+          continue
+        } else if (contextMarker.type !== context?.type) {
+          // Context was closed without being opened
+          throw new EVMError(`Unexpected ${token} without matching start`, errorData)
+        } else {
+          closeContext(context)
           continue
         }
       } else {
@@ -196,7 +240,10 @@ export class EVM {
           }
           case 'callback': {
             context.tokens.push(token)
-
+            continue
+          }
+          case 'string': {
+            context.value += ` ${token}`
             continue
           }
         }

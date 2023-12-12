@@ -44,6 +44,7 @@ Other commands:
 Every value on the stack has a type. Stack values do not have a size limit.
 
 - Numbers: `15` (decimal) or `0xf` (hexadecimal)
+- Strings: `'Hello world'`
 - Booleans: `:true` and `:false`
 - Lists: `[ 1 2 3 ]`
 - Tuples: `0 0 vec{}`

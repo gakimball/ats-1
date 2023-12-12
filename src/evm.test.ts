@@ -90,7 +90,11 @@ describe('List syntax', () => {
   test('Scalars in lists', assert('[ 1 2 :true ]', [[1, 2, true]]))
   test('Lists in lists', assert('[ [ 1 2 ] 3 ]', [[[1, 2], 3]]))
   test('Variables in lists', assert('1 var x! [ x 2 3 ]', [[1, 2, 3]]))
-  test('Callbacks in lists', assert('[ 2 [[ 2 * ]] ]', [[2, { [EVM_CALLBACK]: true, script: '2 *', closure: {} }]]))
+  test('Callbacks in lists', assert('[ 2 [[ 2 * ]] ]', [[2, {
+    [EVM_CALLBACK]: true,
+    script: '2 *',
+    closures: [{}, {}],
+  }]]))
 })
 
 describe('Tuple syntax', () => {
@@ -140,7 +144,7 @@ describe('Variables', () => {
   describe('Globals', () => {
     test('Default value is 0', assert('var x x', [0]))
     test('Immediate assignment', assert('1 var x! x', [1]))
-    test('Reassignment', assert('var x 1 x!', [1]))
+    test('Reassignment', assert('var x 1 x! x', [1]))
     test('Accessible within if?', assert(`
       1 var x!
 

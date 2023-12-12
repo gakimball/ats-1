@@ -17,6 +17,9 @@ export type EVMContext = {
 } | {
   type: 'callback';
   tokens: string[];
+} | {
+  type: 'string';
+  value: string;
 }
 
 type EVMContextType = EVMContext['type']
@@ -37,6 +40,14 @@ export const parseEVMContextMarker = (token: string): {
       return { type: 'callback', position: 'start' }
     case ']]':
       return { type: 'callback', position: 'end' }
+    default:
+      if (token.startsWith('\'')) {
+        debugger
+        return { type: 'string', position: 'start' }
+      }
+      if (token.endsWith('\'')) {
+        return { type: 'string', position: 'end' }
+      }
   }
 }
 
@@ -47,6 +58,7 @@ export const createEVMContext = (type: EVMContextType): EVMContext => {
   switch (type) {
     case 'list': return { type, value: [] }
     case 'callback': return { type, tokens: [] }
+    case 'string': return { type, value: '' }
   }
 }
 
@@ -55,7 +67,7 @@ export const createEVMContext = (type: EVMContextType): EVMContext => {
  */
 export const finalizeEVMContext = (context: EVMContext, closures: EVMClosure[]): EVMType => {
   switch (context.type) {
-    case 'list': return context.value
+    case 'list': case 'string': return context.value
     case 'callback': return {
       [EVM_CALLBACK]: true,
       script: context.tokens.join(' '),
