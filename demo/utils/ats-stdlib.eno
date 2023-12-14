@@ -22,7 +22,7 @@ fn vec/scale()
   let a!
 
   a ~.x b * .x!
-    !.y b * .y!
+    ~.y b * .y!
 end
 
 ( vec vec -- product )
