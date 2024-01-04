@@ -1,3 +1,4 @@
+import shapesScript from 'bundle-text:../../examples/shapes.eno'
 import bootScript from 'bundle-text:../../examples/boot.eno'
 import visualizerScript from 'bundle-text:../../examples/visualizer.eno'
 import midiInputScript from 'bundle-text:../../examples/midi-input.eno'
@@ -9,6 +10,11 @@ export interface TapeDefinition {
 }
 
 export const TAPES: TapeDefinition[] = [
+  {
+    name: 'shapes',
+    description: 'Shapes',
+    contents: shapesScript,
+  },
   {
     name: 'boot',
     description: 'Boot animation',

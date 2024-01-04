@@ -277,6 +277,7 @@ The `debug` word logs to the console the current set of variables, functions, tu
 | `map` | `list callback` | `list'` | |
 | `each` | `list callback`| `--` | |
 | `call` | `callback` | `--` | |
+| `apply2` | `value a b` | `a(value) b(value)` | |
 
 ## Virtual machine
 
@@ -305,9 +306,9 @@ import { readFileSync } from 'node:fs'
 import { EVM } from './src/evm'
 
 const evm = new EVM({
-  'load-file()': ({ push }) => {
-    // This is a slightly contrived example because string types don't exist yet
-    const file = readFileSync('some/file.txt').toString()
+  'load-file()': ({ push, pop, string }) => {
+    const path = string(pop())
+    const file = readFileSync(path).toString()
     push(file)
   },
 })
@@ -320,6 +321,7 @@ Syscalls have access to these helper methods:
 - `execute(str)`: run code in the VM's current context
 - `variable(name)`: get the value of a variable
 - `num(value)`: assert a value is a number
+- `string(value)`: asser a value is a string
 - `list(value)`: assert a value is a list
 - `tuple(type, value)`: assert a value is a tuple of a certain type
   - `type` must include the trailing braces, e.g. `tuple('rect{}', pop())`

@@ -1,0 +1,47 @@
+gfx/tv .w 2 /
+  const center!
+20
+  const radius!
+0
+  let frame!
+1 8 /
+  let rotation-speed!
+
+midi/route()
+
+fn game()
+  cls()
+
+  midi/input-notes() length let points!
+  points 0 == if? 2 points! end
+  2 pi() * points / let angle-step!
+
+  1 points range
+    [[ 1 - angle-step * ]] map
+    [[ calculate-vertex() ]] map
+    draw-shape()
+
+  frame 1 + frame!
+end
+
+( angle -- vec{} )
+fn calculate-vertex()
+  frame rotation-speed * +
+  [[ cos() radius * center + ]]
+  [[ sin() radius * center + ]]
+  apply2 vec{}
+end
+
+( vec{}[] -- )
+fn draw-shape()
+  let vecs!
+  vecs length 1 - let max!
+
+  0 max range [[
+    let idx!
+    vecs idx index
+    idx max == if? 0 else idx 1 + end
+    vecs swap index
+    0x21 line()
+  ]] each
+end

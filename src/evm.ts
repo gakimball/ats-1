@@ -292,6 +292,17 @@ export class EVM {
           this.push(b)
           break
         }
+        case 'apply2': {
+          const cbB = this.callback()
+          const cbA = this.callback()
+          const value = this.pop()
+
+          this.push(value)
+          this.execute(cbA.script, closures)
+          this.push(value)
+          this.execute(cbB.script, closures)
+          break
+        }
         case 'if?': {
           const value = this.pop()
           let truthy = false

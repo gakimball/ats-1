@@ -43,7 +43,10 @@ export class AudioTeleSystem {
 
   private isRunning = true
 
-  private midiFiles: Midi[] = []
+  private midiFiles: Array<{
+    filename: string;
+    buffer: ArrayBuffer;
+  }> = []
 
   private songNotes = new Set<MIDISpeakerNote>()
 
@@ -142,31 +145,38 @@ export class AudioTeleSystem {
         ctx.fillStyle = '#000000'
         ctx.fillRect(0, 0, 128, 128)
       },
-      'notes()': ({ push }) => {
+      'midi/input-notes()': ({ push }) => {
         // ( -- notes[] )
         push(Array.from(this.notes))
       },
-      'song()': ({ push }) => {
+      'midi/file-notes()': ({ push }) => {
         // ( -- notes[] )
         push(Array.from(this.songNotes).map(note => ({
           [TUPLE_TYPE]: 'note{}',
           ...note,
         })))
       },
-      'connect-midi()': () => {
+      'midi/route()': () => {
         // ( -- )
         this.connectMidi = true
       },
-      'play-midi()': ({ num, pop }) => {
+      'midi/get-files()': ({ push }) => {
+        push(this.midiFiles.map((file, index) => ({
+          [TUPLE_TYPE]: 'file{}',
+          name: file.filename,
+          handle: index,
+        })))
+      },
+      'midi/play-file()': ({ num, pop, tuple }) => {
         // ( index -- )
-        const index = num(pop())
-        const midiFile = this.midiFiles[index]
+        const file = tuple('file{}', pop())
+        const midiFile = this.midiFiles[num(file.handle)]
 
         if (!midiFile) {
-          throw new Error(`MIDI file ${index} does not exist`)
+          throw new Error(`MIDI file ${file.name} does not exist`)
         }
 
-        this.midiSpeaker?.play(midiFile)
+        this.midiSpeaker?.play(new Midi(midiFile.buffer))
       },
       'random()': ({ num, pop, push }) => {
         // ( min max -- num )
@@ -178,6 +188,18 @@ export class AudioTeleSystem {
             (Math.random() * (max - min + 1)) + min
           )
         )
+      },
+      'sin()': ({ num, pop, push }) => {
+        push(Math.sin(num(pop())))
+      },
+      'cos()': ({ num, pop, push }) => {
+        push(Math.cos(num(pop())))
+      },
+      'tan()': ({ num, pop, push }) => {
+        push(Math.tan(num(pop())))
+      },
+      'pi()': ({ push }) => {
+        push(Math.PI)
       }
     })
 
@@ -231,10 +253,8 @@ export class AudioTeleSystem {
     }
   }
 
-  addMidiFile(buffer: ArrayBuffer) {
-    this.midiFiles.push(new Midi(buffer))
-
-    console.log(this.midiFiles)
+  addMidiFile(filename: string, buffer: ArrayBuffer) {
+    this.midiFiles.push({ filename, buffer })
   }
 
   private handleError(error: unknown) {

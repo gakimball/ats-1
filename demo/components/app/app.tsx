@@ -66,8 +66,8 @@ export const App: FunctionComponent = () => {
     }
 
     const evm = new AudioTeleSystem(setError)
-    const midiFile = await fileUploadRef.current?.files?.[0]?.arrayBuffer()
-    if (midiFile) { evm.addMidiFile(midiFile) }
+    const midiFile = fileUploadRef.current?.files?.[0]
+    if (midiFile) { evm.addMidiFile(midiFile.name, await midiFile.arrayBuffer()) }
     systemRef.current = evm
     setIsRunning(true)
 

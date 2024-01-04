@@ -67,4 +67,8 @@ fn pixel()
   vec .x vec .y 1 1 rect{} color rect()
 end
 
+tup file{}
+  .name 0 .handle 0
+end
+
 cls()

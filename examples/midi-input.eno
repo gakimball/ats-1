@@ -1,6 +1,6 @@
 gfx/tv .h const h!
 
-connect-midi()
+midi/route()
 
 fn game()
   cls()
