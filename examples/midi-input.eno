@@ -5,7 +5,7 @@ midi/route()
 fn game()
   cls()
 
-  notes() [[
+  midi/input-notes() [[
     0 1 h rect{} 0x21 rect()
   ]] each
 end

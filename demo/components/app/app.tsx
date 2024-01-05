@@ -30,7 +30,7 @@ export const App: FunctionComponent = () => {
   const [midi, setMidi] = useState<MIDIAccess>()
   const [inputId, setInputId] = useState<string>()
   const [isRunning, setIsRunning] = useState(false)
-  const [error, setError] = useState<EVMError>()
+  const [error, setError] = useState<Error>()
   const [visiblePane, setVisiblePane] = useState<AppPane>()
   const [tape, setTape] = useState(TAPES[0])
 
@@ -135,9 +135,11 @@ export const App: FunctionComponent = () => {
           {error && (
             <div className={s.error}>
               {error.message}
-              <pre>
-                {JSON.stringify(error.data, null, 2)}
-              </pre>
+              {error instanceof EVMError && (
+                <pre>
+                  {JSON.stringify(error.data, null, 2)}
+                </pre>
+              )}
             </div>
           )}
           <button

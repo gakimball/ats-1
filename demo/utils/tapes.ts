@@ -11,14 +11,14 @@ export interface TapeDefinition {
 
 export const TAPES: TapeDefinition[] = [
   {
-    name: 'shapes',
-    description: 'Shapes',
-    contents: shapesScript,
-  },
-  {
     name: 'boot',
     description: 'Boot animation',
     contents: bootScript,
+  },
+  {
+    name: 'midi-input',
+    description: 'User MIDI input test',
+    contents: midiInputScript,
   },
   {
     name: 'visualizer',
@@ -26,8 +26,8 @@ export const TAPES: TapeDefinition[] = [
     contents: visualizerScript,
   },
   {
-    name: 'midi-input',
-    description: 'User MIDI input test',
-    contents: midiInputScript,
+    name: 'shapes',
+    description: 'Shape drawing/MIDI CC',
+    contents: shapesScript,
   },
 ]

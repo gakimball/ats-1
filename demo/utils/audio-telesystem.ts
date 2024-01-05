@@ -53,7 +53,7 @@ export class AudioTeleSystem {
   private songNotes = new Set<MIDISpeakerNote>()
 
   constructor(
-    private readonly onError: (error: EVMError) => void,
+    private readonly onError: (error: Error) => void,
   ) {}
 
   handleMidiInput = (evt: Event) => {
@@ -270,7 +270,7 @@ export class AudioTeleSystem {
   private handleError(error: unknown) {
     this.isRunning = false
 
-    if (error instanceof EVMError) {
+    if (error instanceof Error) {
       this.onError(error)
     }
   }

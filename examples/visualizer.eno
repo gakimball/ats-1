@@ -2,6 +2,7 @@
 [ ] var lines!
 [ ] var waves!
 0 var frame!
+:true var playing!
 
 tup line{}
   .x 0 .color 0
@@ -11,20 +12,29 @@ tup wave{}
   .x 0 .color 0 .framestart 0
 end
 
-0 play-midi()
+midi/get-files()
+  ~length if?
+    0 index midi/play-file()
+  else
+    pop :false playing!
+  end
 
 fn game()
   cls()
 
-  song() [[ process-note() ]] each
-  lines [[ .x pitches() swap has ]] filter() lines!
-  lines [[ draw-line() ]] each
+  playing if?
+    midi/file-notes() [[ process-note() ]] each
+    lines [[ .x pitches() swap has ]] filter() lines!
+    lines [[ draw-line() ]] each
+  else
+    draw-error()
+  end
 
   frame 1 + frame!
 end
 
 fn pitches()
-  song() [[ .pitch ]] map
+  midi/file-notes() [[ .pitch ]] map
 end
 
 ( note{} -- )
@@ -72,4 +82,8 @@ fn filter()
   ]] each
 
   filtered-list
+end
+
+fn draw-error()
+  16 60 vec{} 'No MIDI file!' text()
 end
