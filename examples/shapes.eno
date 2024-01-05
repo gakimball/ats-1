@@ -4,7 +4,7 @@ gfx/tv .w 2 /
   const radius!
 0
   let frame!
-1 8 /
+1 20 /
   let rotation-speed!
 
 midi/route()

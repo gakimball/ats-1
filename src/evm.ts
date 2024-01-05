@@ -42,7 +42,10 @@ export class EVM {
    * Map of user-defined functions; each value is the function body.
    */
   private readonly functions: {
-    [name: string]: string;
+    [name: string]: {
+      contents: string;
+      closures: EVMClosure[];
+    };
   } = {}
 
   /**
@@ -281,7 +284,10 @@ export class EVM {
           }
 
           index = getEndTokenIndex(tokens, index, token)
-          this.functions[fnName] = tokens.slice(fnStartIndex, index).join(' ')
+          this.functions[fnName] = {
+            contents: tokens.slice(fnStartIndex, index).join(' '),
+            closures,
+          }
 
           break
         }
@@ -588,7 +594,7 @@ export class EVM {
         const parsed = this.parseValue(tokens, newIndex, closures)
         newIndex = parsed.newIndex
 
-        if (!parsed.value) {
+        if (parsed.value === undefined) {
           throw new Error(`Cannot use ${tokens[newIndex]} in a list`)
         }
 
@@ -728,7 +734,9 @@ export class EVM {
         throw new Error(`In syscall ${funcName}: ${message}`)
       }
     } else if (funcName in this.functions) {
-      this.execute(this.functions[funcName])
+      const { contents, closures } = this.functions[funcName]
+
+      this.execute(contents, closures)
     } else {
       throw new Error(`Unknown function ${funcName}`)
     }

@@ -77,6 +77,8 @@ There are three kinds of variables:
 - `const`: global constant
 - `let` local (within `fn`)
 
+Global variables can be accessed or changed outside of the VM.
+
 ```
 ( Define a variable )
 var x
@@ -109,6 +111,11 @@ end
 
 2 square() ( => 4 )
 ```
+
+Variable names have some restrictions:
+
+- No leading `~` or `.`
+- No trailing `!`
 
 ### Conditionals
 
@@ -173,6 +180,15 @@ Callbacks are a series of instructions to be executed by another word/function. 
 
 ```
 [ 0 1 2 ] [[ draw-something() ]] each
+```
+
+Use `apply2` to apply one value to two callbacks, placing both results on the stack:
+
+```
+( value a b -- a' b' )
+5 [[ + 2 ]] [[ * 2 ]] apply2
+
+( result is 7 10 )
 ```
 
 To execute a callback directly, use the `call` word:
