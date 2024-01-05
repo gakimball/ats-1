@@ -20,6 +20,7 @@ import { EVMError } from '../../../src/utils/evm-error'
 import { TapeList } from '../tape-list/tape-list'
 import { TAPES } from '../../utils/tapes'
 import s from './app.module.css'
+import { MidiCC } from '../midi-cc/midi-cc'
 
 type AppPane = 'palette' | 'tapes' | 'midi'
 
@@ -94,6 +95,10 @@ export const App: FunctionComponent = () => {
     ]))
   })
 
+  const sendMIDIMessage = useEventHandler((message: Uint8Array) => {
+    fakeMidiRef.current.emit(message)
+  })
+
   const togglePane = useEventHandler((pane: AppPane) => {
     setVisiblePane(prev => {
       return prev === pane ? undefined : pane
@@ -159,11 +164,17 @@ export const App: FunctionComponent = () => {
             onChangeInput={setInputId}
           />
           {!inputId && (
-            <Piano
-              isActive={isRunning}
-              onNoteOn={sendNoteOn}
-              onNoteOff={sendNoteOff}
-            />
+            <>
+              <Piano
+                isActive={isRunning}
+                onNoteOn={sendNoteOn}
+                onNoteOff={sendNoteOff}
+              />
+              <div style={{ height: '25px' }} />
+              <MidiCC
+                onMidiMessage={sendMIDIMessage}
+              />
+            </>
           )}
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { Midi } from '@tonejs/midi'
-import { NOTE_OFF, NOTE_ON } from './constants';
+import { CONTROL_CHANGE, NOTE_OFF, NOTE_ON } from './constants';
 import { EVM } from '../../src/evm'
 import { PALETTE } from './palette';
 import { FONT } from './font';
@@ -41,6 +41,8 @@ export class AudioTeleSystem {
 
   private midiSpeaker?: MIDISpeaker
 
+  private midiCC: number[] = []
+
   private isRunning = true
 
   private midiFiles: Array<{
@@ -64,6 +66,9 @@ export class AudioTeleSystem {
       this.notes.delete(pitch)
     } else if (command === NOTE_ON) {
       this.notes.add(pitch)
+    } else if (command === CONTROL_CHANGE) {
+      console.log(event)
+      this.midiCC[event.data[1]] = event.data[2]
     }
 
     if (this.connectMidi) {
@@ -155,6 +160,11 @@ export class AudioTeleSystem {
           [TUPLE_TYPE]: 'note{}',
           ...note,
         })))
+      },
+      'midi/cc()': ({ pop, num, push }) => {
+        const id = num(pop())
+
+        push(this.midiCC[id] ?? 0)
       },
       'midi/route()': () => {
         // ( -- )

@@ -184,6 +184,11 @@ export class EVM {
           this.push(a / b)
           break
         }
+        case '//': {
+          const b = this.num(), a = this.num()
+          this.push(Math.floor(a / b))
+          break
+        }
         case '==': {
           this.push(this.num() === this.num())
           break

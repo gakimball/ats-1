@@ -6,15 +6,18 @@ gfx/tv .w 2 /
   let frame!
 1 20 /
   let rotation-speed!
+0x21 0x2d range
+  let colors!
 
 midi/route()
 
 fn game()
   cls()
 
-  midi/input-notes() length let points!
-  points 0 == if? 2 points! end
-  2 pi() * points / let angle-step!
+  calculate-point-num()
+    let points!
+  2 pi() * points /
+    let angle-step!
 
   1 points range
     [[ 1 - angle-step * ]] map
@@ -22,6 +25,12 @@ fn game()
     draw-shape()
 
   frame 1 + frame!
+end
+
+fn calculate-point-num()
+  0 midi/cc()
+    10 //
+    2 +
 end
 
 ( angle -- vec{} )
@@ -35,7 +44,13 @@ end
 ( vec{}[] -- )
 fn draw-shape()
   let vecs!
-  vecs length 1 - let max!
+  vecs length 1 -
+    let max!
+  colors
+  1 midi/cc()
+    11 //
+    index
+    let color!
 
   0 max range [[
     let idx1!
@@ -44,6 +59,6 @@ fn draw-shape()
 
     vecs idx1 index
     vecs idx2 index
-    0x21 line()
+    color line()
   ]] each
 end

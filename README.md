@@ -278,6 +278,7 @@ The `debug` word logs to the console the current set of variables, functions, tu
 | `-`  | `a b`  | `a-b` | |
 | `*`  | `a b`  | `a*b` | |
 | `/`  | `a b`  | `a/b` | |
+| `//` | `a b`  | `floor(a/b)` | |
 | `==` | `a b`  | `a==b` | |
 | `dup` | `a` | `a a` | |
 | `pop` | `a b` | `a` | |
