@@ -7,7 +7,6 @@ export class EVMError extends Error {
       closures: EVMClosure[];
       index: number;
       token: string;
-      contexts: unknown[];
     }
   ) {
     super(message)

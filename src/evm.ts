@@ -1,5 +1,4 @@
 import { EVMCallback, EVMClosure, EVMTuple, EVMType, EVM_CALLBACK, TUPLE_TYPE } from './types/machine-type';
-import { EVMContext, createEVMContext, finalizeEVMContext, parseEVMContextMarker } from './utils/evm-context';
 import { EVMError } from './utils/evm-error';
 import { getElseOrEndToken } from './utils/get-else-or-end-token';
 import { getEndTokenIndex } from './utils/get-end-token';
@@ -141,7 +140,6 @@ export class EVM {
   execute(input: string, outerClosures: EVMClosure[] = [this.variables]) {
     const tokens = input.trim().replace(/\([^)]+\)/g, '').split(/\s+/)
     let index = -1
-    const contexts: EVMContext[] = []
 
     if (tokens.length === 1 && tokens[0] === '') {
       // Skip execution
@@ -154,99 +152,10 @@ export class EVM {
     while (index < tokens.length - 1) {
       index++
       let token = tokens[index]
-      const context = contexts.at(-1)
       const errorData = {
         closures,
         index,
         token: tokens[index],
-        contexts,
-      }
-
-      const contextMarker = parseEVMContextMarker(token)
-      const shouldProcessContextMarker = (
-        // Process a context marker if it exists...
-        contextMarker
-        && (
-          // ...and the current context is not a callback (because the tokens inside a callback
-          // are parsed upon execution of the callback)...
-          context?.type !== 'callback'
-          || (
-            // ...unless the context marker is `]]`, indicating the end of the callback
-            // NOTE: this logic does not allow for nested callbacks
-            contextMarker.type === 'callback'
-            && contextMarker.position === 'end'
-          )
-        )
-      )
-
-      if (shouldProcessContextMarker) {
-        const closeContext = (context: EVMContext, isSelfClosing = false) => {
-          // Context was correctly opened then closed
-          let finalValue = finalizeEVMContext(context, closures)
-
-          if (context.type === 'string' && !isSelfClosing) {
-            finalValue += ` ${token.slice(0, -1)}`
-          }
-
-          contexts.pop()
-
-          const outerContext = contexts.at(-1)
-
-          if (outerContext?.type === 'list') {
-            // When creating a list within a list, do not place the inner list on
-            // the stack; append it to the outer list instead
-            outerContext.value.push(finalValue)
-          } else {
-            this.push(finalValue)
-          }
-        }
-
-        if (contextMarker.position === 'start') {
-          // New context was opened
-          const newContext = createEVMContext(contextMarker.type)
-
-          contexts.push(newContext)
-
-          if (newContext.type === 'string') {
-            newContext.value = token.slice(1) // Remove the leading quote mark
-
-            // Handle one-word strings
-            if (newContext.value.endsWith('\'')) {
-              newContext.value = newContext.value.slice(0, -1)
-              closeContext(newContext, true)
-            }
-          }
-
-          continue
-        } else if (contextMarker.type !== context?.type) {
-          // Context was closed without being opened
-          throw new EVMError(`Unexpected ${token} without matching start`, errorData)
-        } else {
-          closeContext(context)
-          continue
-        }
-      } else {
-        switch (context?.type) {
-          case 'list': {
-            const value = this.parseValue(token, closures)
-
-            if (value !== undefined) {
-              context.value.push(value)
-            } else {
-              throw new EVMError(`Expected a value for a list, got ${token}`, errorData)
-            }
-
-            continue
-          }
-          case 'callback': {
-            context.tokens.push(token)
-            continue
-          }
-          case 'string': {
-            context.value += ` ${token}`
-            continue
-          }
-        }
       }
 
       const isKeepMode = token.startsWith('~')
@@ -403,7 +312,8 @@ export class EVM {
               prop = subtoken.slice(1)
               tuple[TUPLE_ORDER].push(prop)
             } else {
-              const value = this.parseValue(subtoken, closures)
+              const { value, newIndex } = this.parseValue(tokens, index, closures)
+              index = newIndex
 
               if (value === undefined) {
                 throw new EVMError(`Expected value for tuple ${tupName} property ${subtoken}, got ${subtoken}`, errorData)
@@ -480,6 +390,7 @@ export class EVM {
             ...list,
             value,
           ])
+          break
         }
         case 'range': {
           const to = this.num()
@@ -598,7 +509,8 @@ export class EVM {
 
             this.push(tuple)
           } else {
-            const value = this.parseValue(token, closures)
+            const { value, newIndex } = this.parseValue(tokens, index, closures)
+            index = newIndex
 
             if (value !== undefined) {
               this.push(value)
@@ -621,24 +533,125 @@ export class EVM {
    * @returns A resolved value, or `undefined` if no value could be resolved. This happens if the
    * token can't be parsed as a scalar, and no variable exists matching its name.
    */
-  private parseValue(token: string, closures: EVMClosure[]): EVMType | undefined {
+  private parseValue(
+    tokens: string[],
+    index: number,
+    closures: EVMClosure[],
+  ): {
+    value: EVMType | undefined;
+    newIndex: number;
+  } {
+    const token = tokens[index]
+
     if (token.match(/^\-?\d+$/)) {
-      return Number.parseInt(token, 10)
+      return {
+        value: Number.parseInt(token, 10),
+        newIndex: index,
+      }
     }
 
     if (token.startsWith('0x')) {
-      return Number.parseInt(token.slice(2), 16)
+      return {
+        value: Number.parseInt(token.slice(2), 16),
+        newIndex: index,
+      }
     }
 
     if (token === ':true') {
-      return true
+      return {
+        value: true,
+        newIndex: index,
+      }
     }
 
     if (token === ':false') {
-      return false
+      return {
+        value: false,
+        newIndex: index,
+      }
     }
 
-    return resolveVariable(token, closures)?.value
+    if (token === '[') {
+      let newIndex = index
+      const values: EVMType = []
+
+      while (++newIndex) {
+        const nextToken = tokens[newIndex]
+
+        if (nextToken === ']') {
+          return {
+            value: values,
+            newIndex,
+          }
+        }
+
+        const parsed = this.parseValue(tokens, newIndex, closures)
+        newIndex = parsed.newIndex
+
+        if (!parsed.value) {
+          throw new Error(`Cannot use ${tokens[newIndex]} in a list`)
+        }
+
+        values.push(parsed.value)
+      }
+    }
+
+    if (token === '[[') {
+      let stack = 0
+      let inString = false
+      let newIndex = index
+
+      while (++newIndex) {
+        const nextToken = tokens[newIndex]
+
+        if (nextToken.startsWith("'") && !inString) {
+          inString = true;
+        }
+
+        if (nextToken.endsWith("'") && inString) {
+          inString = false;
+        }
+
+        if (inString) continue
+
+        if (nextToken === '[[') {
+          stack++
+        } else if (nextToken === ']]') {
+          stack--
+
+          if (stack < 0) {
+            return {
+              value: {
+                [EVM_CALLBACK]: true,
+                script: tokens.slice(index + 1, newIndex).join(' '),
+                closures,
+              },
+              newIndex,
+            }
+          }
+        }
+      }
+    }
+
+    if (token.startsWith("'")) {
+      let newIndex = index
+
+      do {
+        const nextToken = tokens[newIndex]
+
+        if (nextToken.endsWith("'")) {
+          return {
+            value: tokens.slice(index, newIndex + 1).join(' ').slice(1, -1),
+            newIndex,
+          }
+        }
+      } while (++newIndex)
+    }
+
+    return {
+      value: resolveVariable(token, closures)?.value,
+      newIndex: index,
+    }
   }
 
   private pop(): EVMType {

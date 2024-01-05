@@ -38,10 +38,12 @@ fn draw-shape()
   vecs length 1 - let max!
 
   0 max range [[
-    let idx!
-    vecs idx index
-    idx max == if? 0 else idx 1 + end
-    vecs swap index
+    let idx1!
+    idx1 max == if? 0 else idx1 1 + end
+      let idx2!
+
+    vecs idx1 index
+    vecs idx2 index
     0x21 line()
   ]] each
 end
