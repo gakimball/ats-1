@@ -1,13 +1,13 @@
 gfx/tv .w 2 /
   const center!
-20
-  const radius!
 0
   let frame!
 1 20 /
   let rotation-speed!
 0x21 0x2d range
   let colors!
+[ ]
+  let waves!
 
 midi/route()
 
@@ -22,7 +22,9 @@ fn game()
   1 points range
     [[ 1 - angle-step * ]] map
     [[ calculate-vertex() ]] map
-    draw-shape()
+    let shape!
+
+  shape draw-shape()
 
   frame 1 + frame!
 end
@@ -35,6 +37,8 @@ end
 
 ( angle -- vec{} )
 fn calculate-vertex()
+  2 midi/cc() let radius!
+
   frame rotation-speed * +
   [[ cos() radius * center + ]]
   [[ sin() radius * center + ]]
@@ -49,7 +53,7 @@ fn draw-shape()
   colors
   1 midi/cc()
     11 //
-    index
+    get
     let color!
 
   0 max range [[
@@ -57,8 +61,15 @@ fn draw-shape()
     idx1 max == if? 0 else idx1 1 + end
       let idx2!
 
-    vecs idx1 index
-    vecs idx2 index
+    vecs idx1 get
+    vecs idx2 get
     color line()
   ]] each
+end
+
+( from to value -- value )
+fn lerp()
+  let value! let to! let from!
+
+  to from - value * from +
 end

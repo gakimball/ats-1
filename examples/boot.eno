@@ -20,7 +20,10 @@ end
 ( n -- )
 fn draw-rainbow()
   let idx!
-  15 idx * let delay!
+  15 idx *
+    let delay!
+  rainbow/colors idx get
+    let color!
 
   rect{->}
     rainbow/width idx * 42 +
@@ -29,13 +32,7 @@ fn draw-rainbow()
       .w!
     frame delay - 2 * rainbow/max-height min()
       .h!
-
-  ~.h if?
-    rainbow/colors idx index
-    rect()
-  else
-    pop
-  end
+    [[ .h ]] [[ color rect() ]] applyif
 end
 
 ( -- )

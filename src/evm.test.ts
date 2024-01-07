@@ -34,8 +34,8 @@ describe('Stack words', () => {
 })
 
 describe('List words', () => {
-  test('index', assert('[ 1 2 ] 1 index', [2]))
-  test('index (keep)', assert(`[ 1 2 ] 1 ~index`, [[1, 2], 2]))
+  test('get', assert('[ 1 2 ] 1 get', [2]))
+  test('get (keep)', assert(`[ 1 2 ] 1 ~get`, [[1, 2], 2]))
   test('length', assert('[ 1 2 ] length', [2]))
   test('length (keep)', assert('[ 1 2 ] ~length', [[1, 2], 2]))
   test('concat', assert('[ 1 ] [ 2 ] concat', [[1, 2]]))

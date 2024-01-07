@@ -6,6 +6,7 @@ import { getEVMType } from './utils/get-evm-type';
 import { resolveVariable } from './utils/resolve-variable';
 import { stringifyEVMValue } from './utils/stringify-evm-value';
 import { ENO_WORDS } from './utils/words';
+import { CORE_WORDS } from './utils/core-words';
 
 const TUPLE_ORDER = Symbol('TUPLE_ORDER')
 
@@ -37,6 +38,12 @@ export class EVM {
 
   /** List of variables that are constant. */
   private readonly constants: string[] = []
+
+  private readonly isStdLibPhase: boolean = true
+
+  private readonly words: {
+    [name: string]: string;
+  } = {}
 
   /**
    * Map of user-defined functions; each value is the function body.
@@ -134,7 +141,10 @@ export class EVM {
     private readonly syscalls: {
       [name: string]: EVMSyscall
     } = {}
-  ) {}
+  ) {
+    this.execute(CORE_WORDS)
+    this.isStdLibPhase = false
+  }
 
   getStack() {
     return [...this.stack]
@@ -155,16 +165,18 @@ export class EVM {
     while (index < tokens.length - 1) {
       index++
       let token = tokens[index]
+
+      console.log(this.stack.map(v => stringifyEVMValue(v)), token)
+
+      // TODO: How to prevent this?
+      if (token === '') {
+        continue
+      }
+
       const errorData = {
         closures,
         index,
         token: tokens[index],
-      }
-
-      const isKeepMode = token.startsWith('~')
-
-      if (isKeepMode) {
-        token = token.slice(1)
       }
 
       switch (token) {
@@ -193,6 +205,11 @@ export class EVM {
           this.push(this.num() === this.num())
           break
         }
+        case '%': {
+          const b = this.num(), a = this.num()
+          this.push(a % b)
+          break
+        }
         case 'pop':
           this.pop()
           break
@@ -202,6 +219,14 @@ export class EVM {
           this.push(value)
           break
         }
+        case 'dupd': {
+          const top = this.pop()
+          const value = this.pop()
+          this.push(value)
+          this.push(value)
+          this.push(top)
+          break
+        }
         case 'swap': {
           const a = this.pop()
           const b = this.pop()
@@ -209,36 +234,10 @@ export class EVM {
           this.push(b)
           break
         }
-        case 'apply2': {
-          const cbB = this.callback()
-          const cbA = this.callback()
-          const value = this.pop()
-
-          this.push(value)
-          this.execute(cbA.script, closures)
-          this.push(value)
-          this.execute(cbB.script, closures)
-          break
-        }
         case 'if?': {
-          const value = this.pop()
-          let truthy = false
+          this.execute('is-truthy', closures)
 
-          if (Array.isArray(value) && value.length > 0) {
-            truthy = true
-          } else if (typeof value === 'object') {
-            truthy = true
-          }
-
-          if (typeof value === 'number' && value > 0) {
-            truthy = true
-          }
-
-          if (value === true) {
-            truthy = true
-          }
-
-          if (!truthy) {
+          if (this.pop() === false) {
             index = getElseOrEndToken(tokens, index, token)
           }
 
@@ -280,18 +279,30 @@ export class EVM {
 
           break
         }
-        case 'fn': {
-          const fnName = tokens[++index]
-          const fnStartIndex = index + 1
+        case 'fn':
+        case 'word': {
+          const isFn = token === 'fn'
+          const name = tokens[++index]
+          const startIndex = index + 1
 
-          if (!fnName.endsWith('()')) {
-            throw new EVMError(`Function ${fnName} must end in ()`, errorData)
+          if (isFn && !name.endsWith('()')) {
+            throw new EVMError(`Function ${name} must end in ()`, errorData)
+          }
+
+          if (!isFn && !this.isStdLibPhase) {
+            throw new EVMError(`"word" is a reserved keyword`, errorData)
           }
 
           index = getEndTokenIndex(tokens, index, token)
-          this.functions[fnName] = {
-            contents: tokens.slice(fnStartIndex, index).join(' '),
-            closures,
+          const contents = tokens.slice(startIndex, index).join(' ')
+
+          if (isFn) {
+            this.functions[name] = {
+              contents,
+              closures,
+            }
+          } else {
+            this.words[name] = contents
           }
 
           break
@@ -351,23 +362,32 @@ export class EVM {
           debugger
           break
         }
-        case 'index': {
-          const index = this.num()
-          const list = this.list()
+        case 'get': {
+          const prop = this.pop()
+          const object = this.pop()
+          let value
 
-          if (isKeepMode) {
-            this.push(list)
+          if (typeof prop === 'number') {
+            if (!Array.isArray(object)) {
+              throw new EVMError(`Cannot use a number to index a ${getEVMType(object)}`, errorData)
+            }
+
+            value = object[prop]
           }
 
-          this.push(list[index] ?? 0)
+          if (typeof prop === 'string') {
+            if (typeof object !== 'object' || !(TUPLE_TYPE in object)) {
+              throw new EVMError(`Cannot use a string to index a ${getEVMType(object)}`, errorData)
+            }
+
+            value = object[prop]
+          }
+
+          this.push(value ?? 0)
           break
         }
         case 'length': {
           const list = this.list()
-
-          if (isKeepMode) {
-            this.push(list)
-          }
 
           this.push(list.length)
           break
@@ -376,21 +396,7 @@ export class EVM {
           const needle = this.pop()
           const list = this.list()
 
-          if (isKeepMode) {
-            this.push(list)
-          }
-
           this.push(list.includes(needle))
-          break
-        }
-        case 'concat': {
-          const b = this.list()
-          const a = this.list()
-
-          this.push([
-            ...a,
-            ...b,
-          ])
           break
         }
         case 'append': {
@@ -415,11 +421,29 @@ export class EVM {
         case 'is-num': {
           const value = this.pop()
 
-          if (isKeepMode) {
-            this.push(value)
+          this.push(typeof value === 'number')
+
+          break
+        }
+        case 'is-truthy': {
+          const value = this.pop()
+          let truthy = false
+
+          if (Array.isArray(value) && value.length > 0) {
+            truthy = true
+          } else if (typeof value === 'object') {
+            truthy = true
           }
 
-          this.push(typeof value === 'number')
+          if (typeof value === 'number' && value > 0) {
+            truthy = true
+          }
+
+          if (value === true) {
+            truthy = true
+          }
+
+          this.push(truthy)
 
           break
         }
@@ -434,50 +458,47 @@ export class EVM {
 
           break
         }
-        case 'map':
         case 'each': {
           const callback = this.callback()
-          const newList: EVMType[] = []
 
           this.list().forEach(item => {
             this.push(item)
             this.execute(callback.script, closures)
-            if (token === 'map') {
-              newList.push(this.pop())
-            }
           })
 
-          if (token === 'map') {
-            this.push(newList)
-          }
           break
         }
         case 'call': {
-          this.execute(this.callback().script, closures)
+          const callback = this.callback()
+          this.execute(callback.script, callback.closures)
           break
         }
         default:
-          if (token.startsWith('.')) {
-            let propName = token.slice(1)
+          if (token.startsWith('.') || token.startsWith('~.')) {
+            let propName = token.replace(/^~?\./, '')
+            let tuple
+            let value
 
             if (propName.endsWith('!')) {
               propName = propName.slice(0, -1)
               const propValue = this.pop()
-              const tuple = this.tupleWithProp(propName)
+              tuple = this.tupleWithProp(propName)
 
-              this.push({
+              value = {
                 ...tuple,
                 [propName]: propValue,
-              })
-            } else {
-              const tuple = this.tupleWithProp(propName)
-
-              if (isKeepMode) {
-                this.push(tuple)
               }
+            } else {
+              tuple = this.tupleWithProp(propName)
 
-              this.push(tuple[propName])
+              value = tuple[propName]
             }
+
+            if (token.startsWith('~')) {
+              this.push(tuple)
+            }
+
+            this.push(value)
           } else if (token.endsWith('!')) {
             const varName = token.slice(0, -1)
 
@@ -492,7 +513,7 @@ export class EVM {
             }
 
             closures[variable.index][varName] = this.pop()
-          } else if (token.endsWith('()')) {
+          } else if (token.endsWith('()') || token in this.words) {
             this.callFunction(token)
           } else if (token.endsWith('{}')) {
             if (token in this.tuples) {
@@ -554,9 +575,9 @@ export class EVM {
   } {
     const token = tokens[index]
 
-    if (token.match(/^\-?\d+$/)) {
+    if (token.match(/^\-?\d+(\.\d+)?$/)) {
       return {
-        value: Number.parseInt(token, 10),
+        value: Number.parseFloat(token),
         newIndex: index,
       }
     }
@@ -728,7 +749,9 @@ export class EVM {
   }
 
   private callFunction(funcName: string) {
-    if (funcName in this.syscalls) {
+    if (funcName in this.words) {
+      this.execute(this.words[funcName], [])
+    } else if (funcName in this.syscalls) {
       try {
         this.syscalls[funcName](this.syscallArgs)
       } catch (error: unknown) {

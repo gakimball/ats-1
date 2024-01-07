@@ -29,6 +29,8 @@ export interface MIDISpeaker {
 }
 
 export class AudioTeleSystem {
+  private prevNotes = new Set<number>();
+
   private notes = new Set<number>();
 
   private connectMidi = false;
@@ -154,6 +156,10 @@ export class AudioTeleSystem {
         // ( -- notes[] )
         push(Array.from(this.notes))
       },
+      'midi/input-notes/pressed()': ({ push }) => {
+        // ( -- notes[] )
+        push(Array.from(this.prevNotes))
+      },
       'midi/file-notes()': ({ push }) => {
         // ( -- notes[] )
         push(Array.from(this.songNotes).map(note => ({
@@ -241,6 +247,7 @@ export class AudioTeleSystem {
       if (this.isRunning) {
         try {
           evm.execute('game()')
+          this.prevNotes = new Set(this.notes)
         } catch (error: unknown) {
           this.handleError(error)
         }

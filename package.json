@@ -5,7 +5,8 @@
     "deploy": "rsync -avz -e ssh ./dist/ root@geoff.zone:/var/www_projects/ats/",
     "repl": "ts-node --project tsconfig.repl.json ./bin/repl.ts",
     "eval": "ts-node --project tsconfig.repl.json ./bin/eval.ts",
-    "test": "node --import tsx --test src/*.test.ts"
+    "test": "node --import tsx --test src/*.test.ts",
+    "test:only": "node --test-only --import tsx --test src/*.test.ts"
   },
   "source": "demo/index.html",
   "browserslist": "> 0.5%, last 2 versions, not dead",

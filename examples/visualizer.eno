@@ -2,7 +2,7 @@
 [ ] var lines!
 [ ] var waves!
 0 var frame!
-:true var playing!
+:false var playing!
 
 tup line{}
   .x 0 .color 0
@@ -13,11 +13,7 @@ tup wave{}
 end
 
 midi/get-files()
-  ~length if?
-    0 index midi/play-file()
-  else
-    pop :false playing!
-  end
+  [[ length ]] [[ first midi/play-file() :true playing! ]] applyif
 
 fn game()
   cls()
@@ -66,7 +62,7 @@ fn list-random()
   list length 1 -
     let max!
 
-  list 0 max random() index
+  list 0 max random() get
 end
 
 fn filter()

@@ -69,6 +69,29 @@ Or explained in more detail:
 * ( remove the top two elements of the stack, multiply them, and place the product on the stack )
 ```
 
+### Stack words
+
+These words modify the stack:
+
+| Word | Before | After |
+| ---- | ------ | ----- |
+| `dup` | `a` | `a a` |
+| `dupd` | `a b` | `a a b` |
+| `pop` | `a b` | `a` |
+| `swap` | `a b` | `b a` |
+
+### Math words
+
+| Word | Before | After |
+| ---- | ------ | ----- |
+| `+`  | `a b`  | `a+b` |
+| `-`  | `a b`  | `a-b` |
+| `*`  | `a b`  | `a*b` |
+| `/`  | `a b`  | `a/b` |
+| `//` | `a b`  | `floor(a/b)` |
+| `%`  | `a b`  | `a%b` |
+| `==` | `a b`  | `a==b` |
+
 ### Variables
 
 There are three kinds of variables:
@@ -94,10 +117,10 @@ By adding `!`, a variable can be defined and immediately assigned using the top 
 
 ```
 ( Before )
-var x 0 x!
+var x 1 x!
 
 ( After )
-0 var x!
+1 var x!
 ```
 
 Lexical scoping:
@@ -111,11 +134,6 @@ end
 
 2 square() ( => 4 )
 ```
-
-Variable names have some restrictions:
-
-- No leading `~` or `.`
-- No trailing `!`
 
 ### Conditionals
 
@@ -155,6 +173,9 @@ Lists are flexible-sized arrays of data. A list can contain mixed values of any 
 
 ( A list can contain nested lists, or a callback )
 [ [ 1 2 3 ] [[ * 2 ]] ]
+
+( A shortcut word for an empty array )
+[]
 ```
 
 Initializing an array places it on the stack. When defining an array's contents, you can only use values; you cannot perform stack operations. To insert a tuple into an array, store it in a variable first.
@@ -164,6 +185,20 @@ Initializing an array places it on the stack. When defining an array's contents,
 
 [ vector ]
 ```
+
+List words:
+
+| Word | Before | After |
+| ---- | ------ | ----- |
+| `get` | `list idx` | `list[idx]` |
+| `~get` | `list idx` | `list list[idx]` |
+| `length` | `list` | `len(list)` |
+| `~length` | `list` | `list len(list)` |
+| `concat` | `list list` | `[...list ...list]` | |
+| `append` | `list val` | `[...list val]` | |
+| `range` | `from to` | `[ from .. to ]` | |
+| `has` | `list value` | `list.has(value)` |
+| `~has` | `list value` | `list list.has(value)` |
 
 ### Callbacks
 
@@ -197,6 +232,15 @@ To execute a callback directly, use the `call` word:
 ( num callback -- num )
 2 [[ 3 * ]] call
 ```
+
+| Word | Before | After |
+| ---- | ------ | ----- |
+| `map` | `list callback` | `list'` |
+| `each` | `list callback`| `--` |
+| `filter` | `list callback`| `list'` |
+| `call` | `callback` | `--` |
+| `apply2` | `value a b` | `a(value) b(value)` |
+| `applyif` | `value cb` | `value ? cb(value) : --` |
 
 ### Tuples
 
@@ -255,13 +299,20 @@ end
 rect{->} 16 .w! 9 .h!
 ```
 
+Tuple words:
+
+| Word | Before | After |
+| ---- | ------ | ----- |
+| `get` | `tuple prop` | `tuple[prop]` |
+| `~get` | `tuple prop` | `tuple tuple[prop]` |
+
 ### Keep mode
 
 Some accessor words can be changed to keep values on the stack, by prefixing the word with `~`.
 
 | Word | Syntax | Stack effect |
 | ---- | ------ | ------------ |
-| index | `~index` | `( list index -- list list[index] )` |
+| get | `~get` | `( list idx -- list list[idx] )` |
 | length | `~length` | `( list -- list len(list) )` |
 | has | `~has` | `( list -- list boolean )` |
 | property access | `~.prop` | `( tuple -- tuple tuple[prop] )` |
@@ -274,27 +325,9 @@ The `debug` word logs to the console the current set of variables, functions, tu
 
 | Word | Before | After | After (keep) |
 | ---- | ------ | ----- | ---- |
-| `+`  | `a b`  | `a+b` | |
-| `-`  | `a b`  | `a-b` | |
-| `*`  | `a b`  | `a*b` | |
-| `/`  | `a b`  | `a/b` | |
-| `//` | `a b`  | `floor(a/b)` | |
-| `==` | `a b`  | `a==b` | |
-| `dup` | `a` | `a a` | |
-| `pop` | `a b` | `a` | |
-| `swap` | `a b` | `b a` | |
 | `not` | `a` | `!a` | |
-| `index` | `list idx` | `list[idx]` | `list list[idx]` |
-| `length` | `list` | `len(list)` | `list len(list)` |
-| `concat` | `list list` | `[...list ...list]` | |
-| `append` | `list val` | `[...list val]` | |
-| `range` | `from to` | `[ from .. to ]` | |
-| `has` | `list value` | `list.has(value)` | `list list.has(value)` |
+| `get` | `tuple prop` | `tuple[prop]` | `tuple tuple[prop]` |
 | `is-num` | `value` | `is-num(value)` | `value is-num(value)` |
-| `map` | `list callback` | `list'` | |
-| `each` | `list callback`| `--` | |
-| `call` | `callback` | `--` | |
-| `apply2` | `value a b` | `a(value) b(value)` | |
 
 ## Virtual machine
 
@@ -338,7 +371,7 @@ Syscalls have access to these helper methods:
 - `execute(str)`: run code in the VM's current context
 - `variable(name)`: get the value of a variable
 - `num(value)`: assert a value is a number
-- `string(value)`: asser a value is a string
+- `string(value)`: assert a value is a string
 - `list(value)`: assert a value is a list
 - `tuple(type, value)`: assert a value is a tuple of a certain type
   - `type` must include the trailing braces, e.g. `tuple('rect{}', pop())`
