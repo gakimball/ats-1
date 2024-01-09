@@ -150,9 +150,14 @@ export class EVM {
     return [...this.stack]
   }
 
-  execute(input: string, outerClosures: EVMClosure[] = [this.variables]) {
+  execute(
+    input: string,
+    outerClosures: EVMClosure[] = [this.variables],
+    appliedValues?: EVMType[],
+  ) {
     const tokens = input.trim().replace(/\([^)]+\)/g, '').split(/\s+/)
     let index = -1
+    let appliedValueIndex = 0
 
     if (tokens.length === 1 && tokens[0] === '') {
       // Skip execution
@@ -234,10 +239,21 @@ export class EVM {
           this.push(b)
           break
         }
-        case 'if?': {
+        case 'if?':
+        case '~if?': {
+          const isKeepMode = token.startsWith('~')
+
+          if (isKeepMode) {
+            this.execute('dup')
+          }
+
           this.execute('is-truthy', closures)
 
           if (this.pop() === false) {
+            if (isKeepMode) {
+              this.pop()
+            }
+
             index = getElseOrEndToken(tokens, index, token)
           }
 
@@ -314,35 +330,39 @@ export class EVM {
             throw new EVMError(`Tuple ${tupName} must end in {}`, errorData)
           }
 
-          let prop: string | undefined
+          // let prop: string | undefined
           const tuple: EVMTupleBlueprint = {
             [TUPLE_ORDER]: [],
           }
 
           while (true) {
-            const subtoken = tokens[++index]
+            const propToken = tokens[++index]
 
-            if (subtoken === 'end') {
+            if (propToken === 'end') {
               break
             }
 
-            if (prop === undefined) {
-              if (!subtoken.startsWith('.')) {
-                throw new EVMError(`Expected tuple ${tupName} property ${subtoken} to start with a "."`, errorData)
-              }
+            if (!propToken.startsWith('.')) {
+              throw new EVMError(`Expected tuple ${tupName} property ${propToken} to start with a "."`, errorData)
+            }
 
-              prop = subtoken.slice(1)
-              tuple[TUPLE_ORDER].push(prop)
+            const propName = propToken.slice(1)
+            tuple[TUPLE_ORDER].push(propName)
+
+            const valueToken = tokens[index + 1]
+
+            if (valueToken.startsWith('.') || valueToken === 'end') {
+              // Use the default default value
+              tuple[propName] = 0
             } else {
-              const { value, newIndex } = this.parseValue(tokens, index, closures)
+              const { value, newIndex } = this.parseValue(tokens, index + 1, closures)
               index = newIndex
 
               if (value === undefined) {
-                throw new EVMError(`Expected value for tuple ${tupName} property ${subtoken}, got ${subtoken}`, errorData)
+                throw new EVMError(`Expected value for tuple ${tupName} property ${propToken}, got ${propToken}`, errorData)
               }
 
-              tuple[prop] = value
-              prop = undefined
+              tuple[propName] = value
             }
           }
 
@@ -409,6 +429,13 @@ export class EVM {
           ])
           break
         }
+        case 'reverse': {
+          const list = this.list()
+
+          this.push(list.reverse())
+
+          break
+        }
         case 'range': {
           const to = this.num()
           const from = this.num()
@@ -416,6 +443,14 @@ export class EVM {
           this.push(
             Array.from({ length: to - from + 1 }, (_, index) => from + index),
           )
+          break
+        }
+        case 'props': {
+          const tuple = this.anyTuple()
+          const blueprint = this.tuples[tuple[TUPLE_TYPE]]
+
+          this.push(blueprint[TUPLE_ORDER])
+
           break
         }
         case 'is-num': {
@@ -463,14 +498,30 @@ export class EVM {
 
           this.list().forEach(item => {
             this.push(item)
-            this.execute(callback.script, closures)
+            this.push(callback)
+            this.execute('call')
           })
 
           break
         }
         case 'call': {
           const callback = this.callback()
-          this.execute(callback.script, callback.closures)
+          const appliedValues = Array
+            .from({ length: callback.placeholders }, () => this.pop())
+            .reverse()
+
+          this.execute(callback.script, callback.closures, appliedValues)
+
+          break
+        }
+        case '_': {
+          if (!appliedValues) {
+            throw new EVMError('Cannot use _ outside of a callback', errorData)
+          }
+
+          this.push(appliedValues[appliedValueIndex])
+          appliedValueIndex += 1
+
           break
         }
         default:
@@ -632,6 +683,7 @@ export class EVM {
       let stack = 0
       let inString = false
       let newIndex = index
+      let placeholders = 0
 
       while (++newIndex) {
         const nextToken = tokens[newIndex]
@@ -657,10 +709,13 @@ export class EVM {
                 [EVM_CALLBACK]: true,
                 script: tokens.slice(index + 1, newIndex).join(' '),
                 closures,
+                placeholders,
               },
               newIndex,
             }
           }
+        } else if (nextToken === '_' && stack === 0) {
+          placeholders += 1
         }
       }
     }
@@ -718,6 +773,16 @@ export class EVM {
     }
 
     throw new Error(`Expected list, got ${getEVMType(value)}`)
+  }
+
+  private anyTuple(): EVMTuple {
+    const value = this.pop()
+
+    if (typeof value === 'object' && TUPLE_TYPE in value) {
+      return value
+    }
+
+    throw new Error(`Expected tuple, got ${getEVMType(value)}`)
   }
 
   private tupleWithProp(key: string): EVMTuple {

@@ -40,8 +40,20 @@ end
 ( tup value -- tup has? )
 word ~has dupd has end
 
+( tup -- ...props )
+word unfurl
+  let tup!
+  tup props reverse [[ tup _ get ]] each
+end
+
 
 ( CALLBACKS )
+
+( value cb -- value )
+word ~call dupd call end
+
+( list cb -- list )
+word ~each dupd each end
 
 ( value a b -- valuea valueb )
 word apply2

@@ -10,6 +10,7 @@ export type EVMCallback = {
   [EVM_CALLBACK]: true;
   script: string;
   closures: EVMClosure[];
+  placeholders: number;
 }
 
 export type EVMScalar = number | boolean | string

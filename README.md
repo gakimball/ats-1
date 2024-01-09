@@ -152,6 +152,22 @@ else
 end
 ```
 
+`if?` has a keep mode, which keeps the checked value on the stack if the condition is true. This is a useful way to check something about a value and then act on it.
+
+```
+( Check if a list is not empty, and then access the first value of the list )
+midi/notes() ~if?
+  first midi/play()
+end
+
+( The same code without keep mode: )
+midi/notes() dup if?
+  first midi/play()
+else
+  pop
+end
+```
+
 ### Functions
 
 ```
@@ -233,6 +249,19 @@ To execute a callback directly, use the `call` word:
 2 [[ 3 * ]] call
 ```
 
+Callbacks support partial application. If you need a value to be in a specific position on the stack, you can use the `_` placeholder to inject the value at that spot.
+
+The value is pulled off the stack at the moment the callback is run. In the below example, `3` is pulled off the stack, and pushed back when the `_` is reached. Therefore, the `+` word will apply to `1` and `2`
+
+```
+1 2 3 [[ + _ * ]] call
+
+( Equivalent to: )
+1 2 [[ + 3 * ]] call
+
+( Result is 9 )
+```
+
 | Word | Before | After |
 | ---- | ------ | ----- |
 | `map` | `list callback` | `list'` |
@@ -248,7 +277,7 @@ Tuples are dictionaries with a fixed set of properties. Define a tuple, its prop
 
 ```
 tup point{}
-  .x 0 .y 0
+  .x .y
 end
 ```
 
@@ -293,10 +322,20 @@ The `{->}` syntax allows you to create a "blank" instance of a tuple, where the 
 
 ```
 tup rect{}
-  .x 0 .y 0 .w 0 .h 0
+  .x .y .w .h
 end
 
 rect{->} 16 .w! 9 .h!
+```
+
+By default, the values of a tuple are 0, but this can be changed in the tuple definition:
+
+```
+tup person{}
+  .name 'Bob'
+  .age 30
+  .friends [ ]
+end
 ```
 
 Tuple words:

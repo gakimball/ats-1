@@ -67,8 +67,12 @@ describe('Assertion words', () => {
   test('is-num (keep)', assert('1 ~is-num', [1, true]))
 })
 
-describe('Callback words', () => {
+describe('Callbacks', () => {
   test('call', assert('2 [[ 2 * ]] call', [4]))
+  test('Partial application', assert(
+    '1 2 3 [[ + _ * ]] call',
+    [9],
+  ))
 })
 
 describe('Number syntax', () => {
@@ -94,11 +98,12 @@ describe('List syntax', () => {
     [EVM_CALLBACK]: true,
     script: '2 *',
     closures: [{}, {}],
+    placeholders: 0,
   }]]))
 })
 
-describe('Tuple syntax', () => {
-  test('Tuple initialization (with props)', assert(`
+describe.only('Tuple syntax', () => {
+  test.only('Tuple initialization (with props)', assert(`
     tup vec{}
       .x 0 .y 0
     end
@@ -120,6 +125,18 @@ describe('Tuple syntax', () => {
     [TUPLE_TYPE]: 'vec{}',
     x: 0,
     y: 0,
+  }]))
+
+  test('Tuple initialization (with 0 default)', assert(`
+    tup vec{}
+      .x .y 1
+    end
+
+    vec{->}
+  `, [{
+    [TUPLE_TYPE]: 'vec{}',
+    x: 0,
+    y: 1,
   }]))
 
   test('Tuple get', assert(`${mockTuple} .value`, [0]))
