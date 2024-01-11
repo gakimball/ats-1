@@ -109,6 +109,10 @@ export const Piano: FunctionComponent<PianoProps> = ({
 
   useEffect(() => {
     const handleEvent = (event: KeyboardEvent) => {
+      if (event.repeat) {
+        return
+      }
+
       const note = NOTES.find(note => note.key === event.key)
 
       if (!note) { return }
