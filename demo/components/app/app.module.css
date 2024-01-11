@@ -54,10 +54,13 @@
 }
 
 .canvas {
-  border: 1px solid #ccc;
   width: calc(128px * 3);
   aspect-ratio: 1;
   image-rendering: pixelated;
+
+  &:not(:fullscreen) {
+    border: 1px solid #ccc;
+  }
 }
 
 .pane {

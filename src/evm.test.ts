@@ -56,6 +56,24 @@ describe('List words', () => {
     const args = spy.mock.calls.flatMap(call => call.arguments)
     deepStrictEqual(args, [1, 2])
   })
+
+  test('filter', assert('[ 0 1 2 ] [[ 0 == not ]] filter', [[1, 2]]))
+})
+
+describe('Tuple words', () => {
+  test('copy', assert(`
+    tup a{} .one .two .three end
+    tup b{} .one .two .four end
+
+    0 0 3 a{}
+    1 2 4 b{}
+    copy
+  `, [{
+    [TUPLE_TYPE]: 'a{}',
+    one: 1,
+    two: 2,
+    three: 3,
+  }]))
 })
 
 describe('Assertion words', () => {

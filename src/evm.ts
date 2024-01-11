@@ -1,5 +1,5 @@
 import { EVMCallback, EVMClosure, EVMTuple, EVMType, EVM_CALLBACK, TUPLE_TYPE } from './types/machine-type';
-import { EVMError } from './utils/evm-error';
+import { EVMError, EVMErrorData } from './utils/evm-error';
 import { getElseOrEndToken } from './utils/get-else-or-end-token';
 import { getEndTokenIndex } from './utils/get-end-token';
 import { getEVMType } from './utils/get-evm-type';
@@ -84,7 +84,7 @@ export class EVM {
         return this.variables[name]
       }
 
-      throw new Error(`Syscall error: no variable named ${name}`)
+      throw new EVMError(`Syscall error: no variable named ${name}`, this.errorData)
     },
     /**
      * Assert that `value` is a number.
@@ -95,7 +95,7 @@ export class EVM {
         return value
       }
 
-      throw new Error(`Syscall error: expected a number, got ${getEVMType(value)}`)
+      throw new EVMError(`Syscall error: expected a number, got ${getEVMType(value)}`, this.errorData)
     },
     /**
      * Assert that `value` is a list.
@@ -106,7 +106,7 @@ export class EVM {
         return value
       }
 
-      throw new Error(`Syscall error: expected a list, got ${getEVMType(value)}`)
+      throw new EVMError(`Syscall error: expected a list, got ${getEVMType(value)}`, this.errorData)
     },
     /**
      * Assert that `value` is a tuple of the given type.
@@ -117,7 +117,7 @@ export class EVM {
         return value
       }
 
-      throw new Error(`Syscall error: expected ${type}, got ${getEVMType(value)}`)
+      throw new EVMError(`Syscall error: expected ${type}, got ${getEVMType(value)}`, this.errorData)
     },
     /**
      * Run the given script within the machine's context.
@@ -130,11 +130,19 @@ export class EVM {
      */
     string: value => {
       if (typeof value !== 'string') {
-        throw new Error(`Syscall error, expected a string, got ${getEVMType(value)}`)
+        throw new EVMError(`Syscall error, expected a string, got ${getEVMType(value)}`, this.errorData)
       }
 
       return value
     },
+  }
+
+  private errorData: EVMErrorData = {
+    closures: [],
+    index: 0,
+    token: '',
+    script: '',
+    callStack: [],
   }
 
   constructor(
@@ -153,6 +161,7 @@ export class EVM {
   execute(
     input: string,
     outerClosures: EVMClosure[] = [this.variables],
+    callStack = ['(root)'],
     appliedValues?: EVMType[],
   ) {
     const tokens = input.trim().replace(/\([^)]+\)/g, '').split(/\s+/)
@@ -171,17 +180,17 @@ export class EVM {
       index++
       let token = tokens[index]
 
-      console.log(this.stack.map(v => stringifyEVMValue(v)), token)
-
       // TODO: How to prevent this?
       if (token === '') {
         continue
       }
 
-      const errorData = {
+      this.errorData = {
         closures,
         index,
         token: tokens[index],
+        script: input,
+        callStack,
       }
 
       switch (token) {
@@ -218,36 +227,15 @@ export class EVM {
         case 'pop':
           this.pop()
           break
-        case 'dup': {
-          const value = this.pop()
-          this.push(value)
-          this.push(value)
-          break
-        }
-        case 'dupd': {
-          const top = this.pop()
-          const value = this.pop()
-          this.push(value)
-          this.push(value)
-          this.push(top)
-          break
-        }
-        case 'swap': {
-          const a = this.pop()
-          const b = this.pop()
-          this.push(a)
-          this.push(b)
-          break
-        }
         case 'if?':
         case '~if?': {
           const isKeepMode = token.startsWith('~')
 
           if (isKeepMode) {
-            this.execute('dup')
+            this.execute('dup', undefined, [...callStack, token])
           }
 
-          this.execute('is-truthy', closures)
+          this.execute('is-truthy', closures, [...callStack, token])
 
           if (this.pop() === false) {
             if (isKeepMode) {
@@ -271,7 +259,7 @@ export class EVM {
           let defaultValue: EVMType = 0
 
           if (!varName) {
-            throw new EVMError(`Expected a variable name after ${token}`, errorData)
+            throw new EVMError(`Expected a variable name after ${token}`, this.errorData)
           }
 
           if (varName.endsWith('!')) {
@@ -280,7 +268,7 @@ export class EVM {
           }
 
           if ((ENO_WORDS as string[]).includes(varName)) {
-            throw new EVMError(`${varName} is a reserved word`, errorData)
+            throw new EVMError(`${varName} is a reserved word`, this.errorData)
           }
 
           if (isGlobal) {
@@ -302,11 +290,11 @@ export class EVM {
           const startIndex = index + 1
 
           if (isFn && !name.endsWith('()')) {
-            throw new EVMError(`Function ${name} must end in ()`, errorData)
+            throw new EVMError(`Function ${name} must end in ()`, this.errorData)
           }
 
           if (!isFn && !this.isStdLibPhase) {
-            throw new EVMError(`"word" is a reserved keyword`, errorData)
+            throw new EVMError(`"word" is a reserved keyword`, this.errorData)
           }
 
           index = getEndTokenIndex(tokens, index, token)
@@ -327,7 +315,7 @@ export class EVM {
           const tupName = tokens[++index]
 
           if (!tupName.endsWith('{}')) {
-            throw new EVMError(`Tuple ${tupName} must end in {}`, errorData)
+            throw new EVMError(`Tuple ${tupName} must end in {}`, this.errorData)
           }
 
           // let prop: string | undefined
@@ -343,7 +331,7 @@ export class EVM {
             }
 
             if (!propToken.startsWith('.')) {
-              throw new EVMError(`Expected tuple ${tupName} property ${propToken} to start with a "."`, errorData)
+              throw new EVMError(`Expected tuple ${tupName} property ${propToken} to start with a "."`, this.errorData)
             }
 
             const propName = propToken.slice(1)
@@ -359,7 +347,7 @@ export class EVM {
               index = newIndex
 
               if (value === undefined) {
-                throw new EVMError(`Expected value for tuple ${tupName} property ${propToken}, got ${propToken}`, errorData)
+                throw new EVMError(`Expected value for tuple ${tupName} property ${propToken}, got ${propToken}`, this.errorData)
               }
 
               tuple[propName] = value
@@ -378,8 +366,15 @@ export class EVM {
             functions: this.functions,
             tuples: this.tuples,
             closures,
+            stack: this.stack,
           })
           debugger
+          break
+        }
+        case 'log': {
+          const value = this.pop()
+          console.log(stringifyEVMValue(value))
+          this.push(value)
           break
         }
         case 'get': {
@@ -389,7 +384,7 @@ export class EVM {
 
           if (typeof prop === 'number') {
             if (!Array.isArray(object)) {
-              throw new EVMError(`Cannot use a number to index a ${getEVMType(object)}`, errorData)
+              throw new EVMError(`Cannot use a number to index a ${getEVMType(object)}`, this.errorData)
             }
 
             value = object[prop]
@@ -397,13 +392,44 @@ export class EVM {
 
           if (typeof prop === 'string') {
             if (typeof object !== 'object' || !(TUPLE_TYPE in object)) {
-              throw new EVMError(`Cannot use a string to index a ${getEVMType(object)}`, errorData)
+              throw new EVMError(`Cannot use a string to index a ${getEVMType(object)}`, this.errorData)
             }
 
             value = object[prop]
           }
 
           this.push(value ?? 0)
+          break
+        }
+        case 'set': {
+          const value = this.pop()
+          const prop = this.pop()
+          const object = this.pop()
+
+          if (typeof prop === 'number') {
+            if (!Array.isArray(object)) {
+              throw new EVMError(`Cannot use a number to index a ${getEVMType(object)}`, this.errorData)
+            }
+
+            const next = [...object]
+            next[prop] = value
+            this.push(next)
+          }
+
+          if (typeof prop === 'string') {
+            if (typeof object !== 'object' || !(TUPLE_TYPE in object)) {
+              throw new EVMError(`Cannot use a string to index a ${getEVMType(object)}`, this.errorData)
+            }
+
+            if (!(prop in object)) {
+              throw new EVMError(`"${prop} is not a property of tuple ${object[TUPLE_TYPE]}"`, this.errorData)
+            }
+
+            const next = {...object}
+            next[prop] = value
+            this.push(next)
+          }
+
           break
         }
         case 'length': {
@@ -419,14 +445,11 @@ export class EVM {
           this.push(list.includes(needle))
           break
         }
-        case 'append': {
-          const value = this.pop()
-          const list = this.list()
+        case 'has-prop': {
+          const needle = this.pop()
+          const tuple = this.anyTuple()
 
-          this.push([
-            ...list,
-            value,
-          ])
+          this.push(String(needle) in tuple)
           break
         }
         case 'reverse': {
@@ -451,6 +474,10 @@ export class EVM {
 
           this.push(blueprint[TUPLE_ORDER])
 
+          break
+        }
+        case '->string': {
+          this.push(String(this.num()))
           break
         }
         case 'is-num': {
@@ -486,7 +513,7 @@ export class EVM {
           const value = this.pop()
 
           if (typeof value !== 'boolean') {
-            throw new EVMError(`Expected a boolean, got ${getEVMType(value)}`, errorData)
+            throw new EVMError(`Expected a boolean, got ${getEVMType(value)}`, this.errorData)
           }
 
           this.push(!value)
@@ -499,7 +526,7 @@ export class EVM {
           this.list().forEach(item => {
             this.push(item)
             this.push(callback)
-            this.execute('call')
+            this.execute('call', undefined, [...callStack, 'each'])
           })
 
           break
@@ -510,13 +537,13 @@ export class EVM {
             .from({ length: callback.placeholders }, () => this.pop())
             .reverse()
 
-          this.execute(callback.script, callback.closures, appliedValues)
+          this.execute(callback.script, callback.closures, [...callStack, '(callback)'], appliedValues)
 
           break
         }
         case '_': {
           if (!appliedValues) {
-            throw new EVMError('Cannot use _ outside of a callback', errorData)
+            throw new EVMError('Cannot use _ outside of a callback', this.errorData)
           }
 
           this.push(appliedValues[appliedValueIndex])
@@ -554,18 +581,18 @@ export class EVM {
             const varName = token.slice(0, -1)
 
             if (this.isConstantVariable(varName)) {
-              throw new EVMError(`Cannot reassign constant ${varName}`, errorData)
+              throw new EVMError(`Cannot reassign constant ${varName}`, this.errorData)
             }
 
             const variable = resolveVariable(varName, closures)
 
             if (!variable) {
-              throw new EVMError(`Cannot assign to unknown variable ${varName}`, errorData)
+              throw new EVMError(`Cannot assign to unknown variable ${varName}`, this.errorData)
             }
 
             closures[variable.index][varName] = this.pop()
           } else if (token.endsWith('()') || token in this.words) {
-            this.callFunction(token)
+            this.callFunction(token, callStack)
           } else if (token.endsWith('{}')) {
             if (token in this.tuples) {
               const blueprint = this.tuples[token]
@@ -599,7 +626,7 @@ export class EVM {
               this.push(value)
             } else {
               debugger
-              throw new EVMError(`Unknown word ${token}`, errorData)
+              throw new EVMError(`Unknown word ${token}`, this.errorData)
             }
           }
       }
@@ -745,7 +772,7 @@ export class EVM {
     const value = this.stack.pop()
 
     if (value === undefined) {
-      throw new Error('Stack underflow')
+      throw new EVMError('Stack underflow', this.errorData)
     }
 
     return value
@@ -762,7 +789,7 @@ export class EVM {
       return value
     }
 
-    throw new Error(`Expected number, got ${getEVMType(value)}`)
+    throw new EVMError(`Expected number, got ${getEVMType(value)}`, this.errorData)
   }
 
   private list(): EVMType[] {
@@ -772,7 +799,7 @@ export class EVM {
       return value
     }
 
-    throw new Error(`Expected list, got ${getEVMType(value)}`)
+    throw new EVMError(`Expected list, got ${getEVMType(value)}`, this.errorData)
   }
 
   private anyTuple(): EVMTuple {
@@ -782,7 +809,7 @@ export class EVM {
       return value
     }
 
-    throw new Error(`Expected tuple, got ${getEVMType(value)}`)
+    throw new EVMError(`Expected tuple, got ${getEVMType(value)}`, this.errorData)
   }
 
   private tupleWithProp(key: string): EVMTuple {
@@ -793,10 +820,10 @@ export class EVM {
         return value
       }
 
-      throw new Error(`Tuple ${value[TUPLE_TYPE]} does not have property ${key}`)
+      throw new EVMError(`Tuple ${value[TUPLE_TYPE]} does not have property ${key}`, this.errorData)
     }
 
-    throw new Error(`Expected tuple, got ${getEVMType(value)}`)
+    throw new EVMError(`Expected tuple, got ${getEVMType(value)}`, this.errorData)
   }
 
   private callback(): EVMCallback {
@@ -806,16 +833,16 @@ export class EVM {
       return value
     }
 
-    throw new Error(`Expected callback, got ${getEVMType(value)}`)
+    throw new EVMError(`Expected callback, got ${getEVMType(value)}`, this.errorData)
   }
 
   private isConstantVariable(varName: string) {
     return varName in this.variables && this.constants.includes(varName)
   }
 
-  private callFunction(funcName: string) {
+  private callFunction(funcName: string, callStack: string[]) {
     if (funcName in this.words) {
-      this.execute(this.words[funcName], [])
+      this.execute(this.words[funcName], undefined, [...callStack, funcName])
     } else if (funcName in this.syscalls) {
       try {
         this.syscalls[funcName](this.syscallArgs)
@@ -824,14 +851,14 @@ export class EVM {
           ? error.message
           : '(unknown error)'
 
-        throw new Error(`In syscall ${funcName}: ${message}`)
+        throw new EVMError(`In syscall ${funcName}: ${message}`, this.errorData)
       }
     } else if (funcName in this.functions) {
       const { contents, closures } = this.functions[funcName]
 
-      this.execute(contents, closures)
+      this.execute(contents, closures, [...callStack, funcName])
     } else {
-      throw new Error(`Unknown function ${funcName}`)
+      throw new EVMError(`Unknown function ${funcName}`, this.errorData)
     }
   }
 }

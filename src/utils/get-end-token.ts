@@ -17,6 +17,7 @@ export const getEndTokenIndex = (tokens: string[], index: number, startingWord: 
 
     switch (token) {
       case 'if?':
+      case '~if?':
         nestedIfCount++
         break
       case 'end':

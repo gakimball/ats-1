@@ -1,5 +1,5 @@
 import { FunctionComponent } from 'preact'
-import { useState, useRef } from 'preact/hooks'
+import { useState, useRef, useCallback, useEffect } from 'preact/hooks'
 import copyTextToClipboard from 'copy-text-to-clipboard'
 import classnames from 'classnames/bind'
 import { MIDIStatus } from '../midi-status/midi-status'
@@ -18,9 +18,9 @@ import { ChangeEvent } from 'preact/compat'
 import { createMidiSpeaker } from '../../utils/midi-speaker'
 import { EVMError } from '../../../src/utils/evm-error'
 import { TapeList } from '../tape-list/tape-list'
-import { TAPES } from '../../utils/tapes'
+import { TAPES, TapeDefinition } from '../../utils/tapes'
 import s from './app.module.css'
-import { MidiCC } from '../midi-cc/midi-cc'
+import { MidiCC, MidiCCRef } from '../midi-cc/midi-cc'
 
 type AppPane = 'palette' | 'tapes' | 'midi'
 
@@ -35,10 +35,28 @@ export const App: FunctionComponent = () => {
   const [tape, setTape] = useState(TAPES[0])
 
   const editorRef = useRef<EditorRef>(null)
+  const canvasRef = useRef<HTMLCanvasElement>()
   const drawingContextRef = useRef<CanvasRenderingContext2D>()
   const systemRef = useRef<AudioTeleSystem>()
   const fakeMidiRef = useRef(createFakeMidiInput())
   const fileUploadRef = useRef<HTMLInputElement>(null)
+  const midiCCRef = useRef<MidiCCRef>(null)
+
+  const loadTape = useEventHandler((value: TapeDefinition) => {
+    setTape(value)
+    setVisiblePane(undefined)
+
+    value.contents.split('\n').forEach(line => {
+      if (line.startsWith('(#CC')) {
+        const ccData = line.slice(1, -1).split(' ').slice(1).map(str => Number.parseInt(str, 10))
+        midiCCRef.current?.setValue(ccData[0], ccData[1])
+      }
+    })
+  })
+
+  useEffect(() => {
+    loadTape(tape)
+  }, [])
 
   const connectMidi = useEventHandler(async () => {
     const access = await navigator.requestMIDIAccess()
@@ -79,6 +97,7 @@ export const App: FunctionComponent = () => {
       createFakeMidiOutput(),
       createMidiSpeaker(),
     )
+    midiCCRef.current?.transmitAllValues()
   })
 
   const sendNoteOn = useEventHandler((note: number) => {
@@ -153,12 +172,21 @@ export const App: FunctionComponent = () => {
         <div className={s.right}>
           <canvas
             ref={e => {
+              canvasRef.current = e ?? undefined
               drawingContextRef.current = e?.getContext('2d') ?? undefined
             }}
             className={s.canvas}
             width={128}
             height={128}
           ></canvas>
+          <button
+            type="button"
+            onClick={() => {
+              canvasRef.current?.requestFullscreen()
+            }}
+          >
+            Full screen
+          </button>
           <MIDIStatus
             inputMap={midi?.inputs}
             selectedInput={inputId}
@@ -174,6 +202,7 @@ export const App: FunctionComponent = () => {
               />
               <div style={{ height: '25px' }} />
               <MidiCC
+                ref={midiCCRef}
                 onMidiMessage={sendMIDIMessage}
               />
             </>
@@ -182,10 +211,7 @@ export const App: FunctionComponent = () => {
       </div>
       <div className={cls('pane', { isOpen: visiblePane === 'tapes' })}>
         <TapeList
-          onSelectTape={tape => {
-            setTape(tape)
-            setVisiblePane(undefined)
-          }}
+          onSelectTape={loadTape}
         />
       </div>
       <div className={cls('pane', { isOpen: visiblePane === 'midi' })}>

@@ -1,32 +1,41 @@
 import { FunctionComponent } from 'preact';
-import { useState } from 'preact/hooks';
+import { useImperativeHandle, useState } from 'preact/hooks';
 import { useEventHandler } from '../../hooks/use-event-handler';
 import { JSXInternal } from 'preact/src/jsx';
 import { CONTROL_CHANGE } from '../../utils/constants';
+import { forwardRef } from 'preact/compat';
 
 interface MidiCCProps {
   onMidiMessage: (message: Uint8Array) => void;
 }
 
-export const MidiCC: FunctionComponent<MidiCCProps> = ({
-  onMidiMessage,
-}) => {
-  const [active, setActive] = useState(0)
-  const [state, setState] = useState(Array(128).fill(0))
+export interface MidiCCRef {
+  setValue: (id: number, value: number) => void;
+  transmitAllValues: () => void;
+}
 
-  const changeCCNumber = useEventHandler((event: JSXInternal.TargetedEvent<HTMLInputElement>) => {
+export const MidiCC = forwardRef<MidiCCRef, MidiCCProps>(({
+  onMidiMessage,
+}, ref) => {
+  const [active, setActive] = useState(0)
+  const [state, setState] = useState<number[]>(Array(128).fill(0))
+
+  const setCCNumber = useEventHandler((id: number, value: number) => {
+    setState(prev => {
+      const next = [...prev]
+      next[id] = value
+      return next
+    })
+  })
+
+  const handleCCChange = useEventHandler((event: JSXInternal.TargetedEvent<HTMLInputElement>) => {
     setActive(Number.parseInt(event.currentTarget.value, 10))
   })
 
   const sendCCMessage = useEventHandler((event: JSXInternal.TargetedEvent<HTMLInputElement>) => {
     const value = Number.parseInt(event.currentTarget.value, 10)
 
-    setState(prev => {
-      const next = [...prev]
-      next[active] = value
-      return next
-    })
-
+    setCCNumber(active, value)
     onMidiMessage(new Uint8Array([
       CONTROL_CHANGE << 4,
       active,
@@ -34,11 +43,25 @@ export const MidiCC: FunctionComponent<MidiCCProps> = ({
     ]))
   })
 
+  useImperativeHandle(ref, () => ({
+    setValue: setCCNumber,
+    transmitAllValues: () => {
+      console.log({ state })
+      state.forEach((value, id) => {
+        onMidiMessage(new Uint8Array([
+          CONTROL_CHANGE << 4,
+          id,
+          value,
+        ]))
+      })
+    }
+  }))
+
   return (
     <div>
       <input
         value={active}
-        onChange={changeCCNumber}
+        onChange={handleCCChange}
         type="number"
         min="0"
         max="127"
@@ -56,4 +79,4 @@ export const MidiCC: FunctionComponent<MidiCCProps> = ({
       />
     </div>
   )
-}
+})

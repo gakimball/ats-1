@@ -1,3 +1,5 @@
+(#CC 2 40)
+
 gfx/tv .w 2 /
   const center!
 0
@@ -6,38 +8,109 @@ gfx/tv .w 2 /
   let rotation-speed!
 0x21 0x2d range
   let colors!
-[ ]
-  let waves!
+[]
+  let shapes!
+center 2 *
+  let max-radius!
+
+tup shape{}
+  .sides
+  .color
+  .radius
+  .frame-start
+end
 
 midi/route()
 
 fn game()
   cls()
 
-  calculate-point-num()
-    let points!
-  2 pi() * points /
-    let angle-step!
+  shape/new() let shape!
 
-  1 points range
-    [[ 1 - angle-step * ]] map
-    [[ calculate-vertex() ]] map
-    let shape!
+  midi/input-notes/pressed()
+    [[ pop shape frame .frame-start! ]] map
+    [[ shapes _ concat ]] call
+    [[ shape/get-radius() max-radius lt() ]] filter
+    shapes!
 
-  shape draw-shape()
+  1 4 range [[
+    shape ~.radius
+      _ 16 * +
+      .radius!
+      ~.color
+      16 +
+      .color!
+  ]] map let echoes!
+
+  shapes
+    shape append
+    echoes concat
+    [[ draw-shape-count() ]] ~call
+    [[ shape/draw() ]] each
 
   frame 1 + frame!
 end
 
-fn calculate-point-num()
-  0 midi/cc()
-    10 //
-    2 +
+( -- shape{} )
+fn shape/new()
+  shape{->}
+    0 midi/cc()
+      10 //
+      2 +
+      .sides!
+    1 midi/cc()
+      11 //
+      [[ colors _ get ]] call
+      .color!
+    2 midi/cc()
+      .radius!
 end
 
-( angle -- vec{} )
-fn calculate-vertex()
-  2 midi/cc() let radius!
+( shape{} -- number )
+fn shape/get-radius()
+  let shape!
+
+  shape .frame-start
+    ~if? frame swap - else 0 end
+    let offset!
+
+  shape .radius offset +
+end
+
+( shape{} -- )
+fn shape/draw()
+  let shape!
+  shape .sides let sides!
+  shape shape/get-radius() let radius!
+
+  sides 1 - let idxlast!
+  0 idxlast range let indexes!
+
+  2 pi() *
+    sides /
+    let angle-step!
+
+  indexes
+    [[ angle-step * radius angle->vector() ]] map
+    let vectors!
+
+  indexes
+    [[
+      let idx1!
+
+      ( Connect the last vertex to the first one )
+      idx1 idxlast == if? 0 else idx1 1 + end
+        let idx2!
+
+      vectors idx1 get
+      vectors idx2 get
+      shape .color line()
+    ]] each
+end
+
+( angle radius -- vec{} )
+fn angle->vector()
+  let radius!
 
   frame rotation-speed * +
   [[ cos() radius * center + ]]
@@ -45,31 +118,16 @@ fn calculate-vertex()
   apply2 vec{}
 end
 
-( vec{}[] -- )
-fn draw-shape()
-  let vecs!
-  vecs length 1 -
-    let max!
-  colors
-  1 midi/cc()
-    11 //
-    get
-    let color!
-
-  0 max range [[
-    let idx1!
-    idx1 max == if? 0 else idx1 1 + end
-      let idx2!
-
-    vecs idx1 get
-    vecs idx2 get
-    color line()
-  ]] each
+( a b -- a>b )
+fn lt()
+  swap - is-truthy
 end
 
-( from to value -- value )
-fn lerp()
-  let value! let to! let from!
+( list -- )
+fn draw-shape-count()
+  let list!
 
-  to from - value * from +
+  vec{->}
+  list length ->string
+  text()
 end

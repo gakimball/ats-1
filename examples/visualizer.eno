@@ -1,27 +1,39 @@
 0x21 0x2c range const colors!
-[ ] var lines!
-[ ] var waves!
+[] var lines!
 0 var frame!
 :false var playing!
 
-tup line{}
-  .x 0 .color 0
-end
+tup line{} .pitch .velocity .color end
 
-tup wave{}
-  .x 0 .color 0 .framestart 0
+midi/get-files() ~if?
+  first midi/play-file()
+  :true playing!
 end
-
-midi/get-files()
-  [[ length ]] [[ first midi/play-file() :true playing! ]] applyif
 
 fn game()
   cls()
 
   playing if?
-    midi/file-notes() [[ process-note() ]] each
-    lines [[ .x pitches() swap has ]] filter() lines!
-    lines [[ draw-line() ]] each
+    ( List of notes currently being played )
+    midi/file-notes()
+      [[ .pitch ]] map
+      let notes!
+
+    ( Remove lines for notes that have stopped playing )
+    lines
+      [[ notes _ .pitch has ]] filter
+      let current-lines!
+
+    ( Add new lines for notes that just began playing )
+    midi/file-notes/pressed()
+      [[ note->line() ]] map
+      let new-lines!
+
+    ( Combine the two lists of lines and draw each one )
+    current-lines
+      new-lines concat
+      [[ line/draw() ]] ~each
+      lines!
   else
     draw-error()
   end
@@ -29,35 +41,29 @@ fn game()
   frame 1 + frame!
 end
 
-fn pitches()
-  midi/file-notes() [[ .pitch ]] map
-end
+( note{} -- line{} )
+fn note->line()
+  let note!
 
-( note{} -- )
-fn process-note()
-  .pitch let pitch!
-  lines [[ .x ]] map let active-lines!
-
-  active-lines pitch has not if?
-    pitch colors list-random() line{}
-      let new-line!
-    lines [ new-line ] concat lines!
-
-    new-line .x new-line .color frame wave{}
-      let new-wave!
-    waves [ new-wave ] concat waves!
-  end
+  line{->}
+    note copy
+    colors list/random() .color!
 end
 
 ( line{} -- )
-fn draw-line()
+fn line/draw()
   let line!
 
-  line .x 0 1 gfx/tv .h rect{} line .color rect()
+  rect{->}
+    line .pitch .x!
+    1 .w!
+    gfx/tv .h .h!
+  line .color
+  rect()
 end
 
 ( -- color )
-fn list-random()
+fn list/random()
   let list!
   list length 1 -
     let max!
@@ -65,21 +71,7 @@ fn list-random()
   list 0 max random() get
 end
 
-fn filter()
-  let callback! let original-list!
-  [ ] let filtered-list!
-
-  original-list [[
-    let item!
-
-    item callback call if?
-      filtered-list [ item ] concat filtered-list!
-    end
-  ]] each
-
-  filtered-list
-end
-
+( -- )
 fn draw-error()
   16 60 vec{} 'No MIDI file!' text()
 end

@@ -1,17 +1,32 @@
 export const CORE_WORDS = `
+( STACK )
+
+( a -- a a )
+word dup let a! a a end
+
+( a b -- a a b )
+word dupd let b! dup b end
+
+( a b -- b a )
+word swap let b! let a! b a end
+
+
 ( LISTS )
 
 ( -- list )
 word [] [ ] end
 
 ( list -- list[0] )
-word first 0 index end
+word first 0 get end
 
 ( list prop -- list list[prop] )
 word ~get dupd get end
 
 ( list -- list len )
 word ~length dup length end
+
+( list value -- list' )
+word append let value! ~length value set end
 
 ( a b -- [...a ...b] )
 word concat
@@ -30,7 +45,7 @@ end
 ( list cb -- list' )
 word filter
   let cb! [] let res!
-  [[ cb call if? res swap append res! end ]] each
+  [[ cb ~call if? res swap append res! else pop end ]] each
   res
 end
 
@@ -44,6 +59,15 @@ word ~has dupd has end
 word unfurl
   let tup!
   tup props reverse [[ tup _ get ]] each
+end
+
+( a{} b{} -- a'{} )
+word copy
+  let b! let a!
+  b props
+    [[ a _ has-prop ]] filter
+    [[ let p! a b p get p swap set a! ]] each
+  a
 end
 
 

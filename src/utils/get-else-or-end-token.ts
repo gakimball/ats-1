@@ -16,6 +16,7 @@ export const getElseOrEndToken = (tokens: string[], index: number, startingWord:
 
     switch (token) {
       case 'if?':
+      case '~if?':
         nestedIfCount++
         break
       case 'else':

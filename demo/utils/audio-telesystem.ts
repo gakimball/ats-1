@@ -5,7 +5,6 @@ import { PALETTE } from './palette';
 import { FONT } from './font';
 import atsStdLib from 'bundle-text:./ats-stdlib.eno'
 import { TUPLE_TYPE } from '../../src/types/machine-type';
-import { EVMError } from '../../src/utils/evm-error';
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
@@ -52,6 +51,8 @@ export class AudioTeleSystem {
     buffer: ArrayBuffer;
   }> = []
 
+  private prevSongNotes = new Set<MIDISpeakerNote>()
+
   private songNotes = new Set<MIDISpeakerNote>()
 
   constructor(
@@ -69,7 +70,6 @@ export class AudioTeleSystem {
     } else if (command === NOTE_ON) {
       this.notes.add(pitch)
     } else if (command === CONTROL_CHANGE) {
-      console.log(event)
       this.midiCC[event.data[1]] = event.data[2]
     }
 
@@ -112,7 +112,7 @@ export class AudioTeleSystem {
 
             push(x + 7 - h)
             push(y + v)
-            execute(`vec{} gfx/pal ${colorIndex} index pixel()`)
+            execute(`vec{} gfx/pal ${colorIndex} get pixel()`)
           }
         }
       },
@@ -157,12 +157,23 @@ export class AudioTeleSystem {
         push(Array.from(this.notes))
       },
       'midi/input-notes/pressed()': ({ push }) => {
+        const notes = Array.from(this.notes).filter(note => !this.prevNotes.has(note))
+
         // ( -- notes[] )
-        push(Array.from(this.prevNotes))
+        push(notes)
       },
       'midi/file-notes()': ({ push }) => {
         // ( -- notes[] )
         push(Array.from(this.songNotes).map(note => ({
+          [TUPLE_TYPE]: 'note{}',
+          ...note,
+        })))
+      },
+      'midi/file-notes/pressed()': ({ push }) => {
+        const notes = Array.from(this.songNotes).filter(note => !this.prevSongNotes.has(note))
+
+        // ( -- notes[] )
+        push(notes.map(note => ({
           [TUPLE_TYPE]: 'note{}',
           ...note,
         })))
@@ -247,7 +258,8 @@ export class AudioTeleSystem {
       if (this.isRunning) {
         try {
           evm.execute('game()')
-          this.prevNotes = new Set(this.notes)
+          this.prevNotes = new Set(this.notes.values())
+          this.prevSongNotes = new Set(this.songNotes.values())
         } catch (error: unknown) {
           this.handleError(error)
         }
