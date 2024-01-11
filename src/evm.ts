@@ -7,6 +7,8 @@ import { resolveVariable } from './utils/resolve-variable';
 import { stringifyEVMValue } from './utils/stringify-evm-value';
 import { ENO_WORDS } from './utils/words';
 import { CORE_WORDS } from './utils/core-words';
+import { assertType } from './utils/assert-type';
+import { parseValue } from './utils/parse-value';
 
 const TUPLE_ORDER = Symbol('TUPLE_ORDER')
 
@@ -17,7 +19,7 @@ interface EVMSyscallArgs {
   num: (value: EVMType) => number;
   list: (value: EVMType) => EVMType[];
   execute: (script: string) => void;
-  tuple: (type: string, value: EVMType) => EVMTuple;
+  tuple: (type: `${string}{}`, value: EVMType) => EVMTuple;
   string: (value: EVMType) => string;
 }
 
@@ -71,6 +73,7 @@ export class EVM {
    * functions, and type guards.
    */
   private syscallArgs: EVMSyscallArgs = {
+    ...assertType,
     /** Pop the top value off the stack. */
     pop: () => this.pop(),
     /** Push a value onto the stack. */
@@ -87,54 +90,10 @@ export class EVM {
       throw new EVMError(`Syscall error: no variable named ${name}`, this.errorData)
     },
     /**
-     * Assert that `value` is a number.
-     * @throws Throws if `value` is not a number.
-     */
-    num: value => {
-      if (typeof value === 'number') {
-        return value
-      }
-
-      throw new EVMError(`Syscall error: expected a number, got ${getEVMType(value)}`, this.errorData)
-    },
-    /**
-     * Assert that `value` is a list.
-     * @throws Throws if `value` is not a list.
-     */
-    list: value => {
-      if (Array.isArray(value)) {
-        return value
-      }
-
-      throw new EVMError(`Syscall error: expected a list, got ${getEVMType(value)}`, this.errorData)
-    },
-    /**
-     * Assert that `value` is a tuple of the given type.
-     * @throws Throws if `value` is not the right type.
-     */
-    tuple: (type, value) => {
-      if (typeof value === 'object' && TUPLE_TYPE in value && value[TUPLE_TYPE] === type) {
-        return value
-      }
-
-      throw new EVMError(`Syscall error: expected ${type}, got ${getEVMType(value)}`, this.errorData)
-    },
-    /**
      * Run the given script within the machine's context.
      * @returns The current stack formatted as a string.
      */
     execute: script => this.execute(script),
-    /**
-     * Assert that `value` is a string.
-     * @throws Throws if `value` is not a string.
-     */
-    string: value => {
-      if (typeof value !== 'string') {
-        throw new EVMError(`Syscall error, expected a string, got ${getEVMType(value)}`, this.errorData)
-      }
-
-      return value
-    },
   }
 
   private errorData: EVMErrorData = {
@@ -343,7 +302,7 @@ export class EVM {
               // Use the default default value
               tuple[propName] = 0
             } else {
-              const { value, newIndex } = this.parseValue(tokens, index + 1, closures)
+              const { value, newIndex } = parseValue(tokens, index + 1, closures)
               index = newIndex
 
               if (value === undefined) {
@@ -619,7 +578,7 @@ export class EVM {
 
             this.push(tuple)
           } else {
-            const { value, newIndex } = this.parseValue(tokens, index, closures)
+            const { value, newIndex } = parseValue(tokens, index, closures)
             index = newIndex
 
             if (value !== undefined) {
@@ -633,139 +592,6 @@ export class EVM {
     }
 
     return this.stack.map(stringifyEVMValue).join(' ')
-  }
-
-  /**
-   * Parse a token that could be a value (e.g. a number or boolean), or a variable that references
-   * a value.
-   * @param token Token to parse.
-   * @param closure The current closure.
-   * @returns A resolved value, or `undefined` if no value could be resolved. This happens if the
-   * token can't be parsed as a scalar, and no variable exists matching its name.
-   */
-  private parseValue(
-    tokens: string[],
-    index: number,
-    closures: EVMClosure[],
-  ): {
-    value: EVMType | undefined;
-    newIndex: number;
-  } {
-    const token = tokens[index]
-
-    if (token.match(/^\-?\d+(\.\d+)?$/)) {
-      return {
-        value: Number.parseFloat(token),
-        newIndex: index,
-      }
-    }
-
-    if (token.startsWith('0x')) {
-      return {
-        value: Number.parseInt(token.slice(2), 16),
-        newIndex: index,
-      }
-    }
-
-    if (token === ':true') {
-      return {
-        value: true,
-        newIndex: index,
-      }
-    }
-
-    if (token === ':false') {
-      return {
-        value: false,
-        newIndex: index,
-      }
-    }
-
-    if (token === '[') {
-      let newIndex = index
-      const values: EVMType = []
-
-      while (++newIndex) {
-        const nextToken = tokens[newIndex]
-
-        if (nextToken === ']') {
-          return {
-            value: values,
-            newIndex,
-          }
-        }
-
-        const parsed = this.parseValue(tokens, newIndex, closures)
-        newIndex = parsed.newIndex
-
-        if (parsed.value === undefined) {
-          throw new Error(`Cannot use ${tokens[newIndex]} in a list`)
-        }
-
-        values.push(parsed.value)
-      }
-    }
-
-    if (token === '[[') {
-      let stack = 0
-      let inString = false
-      let newIndex = index
-      let placeholders = 0
-
-      while (++newIndex) {
-        const nextToken = tokens[newIndex]
-
-        if (nextToken.startsWith("'") && !inString) {
-          inString = true;
-        }
-
-        if (nextToken.endsWith("'") && inString) {
-          inString = false;
-        }
-
-        if (inString) continue
-
-        if (nextToken === '[[') {
-          stack++
-        } else if (nextToken === ']]') {
-          stack--
-
-          if (stack < 0) {
-            return {
-              value: {
-                [EVM_CALLBACK]: true,
-                script: tokens.slice(index + 1, newIndex).join(' '),
-                closures,
-                placeholders,
-              },
-              newIndex,
-            }
-          }
-        } else if (nextToken === '_' && stack === 0) {
-          placeholders += 1
-        }
-      }
-    }
-
-    if (token.startsWith("'")) {
-      let newIndex = index
-
-      do {
-        const nextToken = tokens[newIndex]
-
-        if (nextToken.endsWith("'")) {
-          return {
-            value: tokens.slice(index, newIndex + 1).join(' ').slice(1, -1),
-            newIndex,
-          }
-        }
-      } while (++newIndex)
-    }
-
-    return {
-      value: resolveVariable(token, closures)?.value,
-      newIndex: index,
-    }
   }
 
   private pop(): EVMType {
@@ -843,7 +669,10 @@ export class EVM {
   private callFunction(funcName: string, callStack: string[]) {
     if (funcName in this.words) {
       this.execute(this.words[funcName], undefined, [...callStack, funcName])
-    } else if (funcName in this.syscalls) {
+      return
+    }
+
+    if (funcName in this.syscalls) {
       try {
         this.syscalls[funcName](this.syscallArgs)
       } catch (error: unknown) {
@@ -853,12 +682,15 @@ export class EVM {
 
         throw new EVMError(`In syscall ${funcName}: ${message}`, this.errorData)
       }
-    } else if (funcName in this.functions) {
-      const { contents, closures } = this.functions[funcName]
-
-      this.execute(contents, closures, [...callStack, funcName])
-    } else {
-      throw new EVMError(`Unknown function ${funcName}`, this.errorData)
+      return
     }
+
+    if (funcName in this.functions) {
+      const { contents, closures } = this.functions[funcName]
+      this.execute(contents, closures, [...callStack, funcName])
+      return
+    }
+
+    throw new EVMError(`Unknown function ${funcName}`, this.errorData)
   }
 }
