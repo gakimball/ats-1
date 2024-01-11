@@ -94,14 +94,19 @@ export class AudioTeleSystem {
         const rect = tuple('rect{}', pop())
 
         ctx.fillStyle = color
-        ctx.fillRect(num(rect.x), num(rect.y), num(rect.w), num(rect.h))
+        ctx.fillRect(
+          Math.round(num(rect.x)),
+          Math.round(num(rect.y)),
+          Math.round(num(rect.w)),
+          Math.round(num(rect.h)),
+        )
       },
       'spr()': ({ pop, num, list, tuple, execute, push }) => {
         // ( rect{} chr[] -- )
         const chr = list(pop())
         const rect = tuple('rect{}', pop())
-        const x = num(rect.x)
-        const y = num(rect.y)
+        const x = Math.round(num(rect.x))
+        const y = Math.round(num(rect.y))
 
         // Adapted from: https://wiki.xxiivv.com/site/chr_format.html
         for (let v = 0; v < 8; v++) {
@@ -124,8 +129,8 @@ export class AudioTeleSystem {
 
         ctx.strokeStyle = color
         ctx.beginPath()
-        ctx.moveTo(num(from.x), num(from.y))
-        ctx.lineTo(num(to.x), num(to.y))
+        ctx.moveTo(Math.round(num(from.x)), Math.round(num(from.y)))
+        ctx.lineTo(Math.round(num(to.x)), Math.round(num(to.y)))
         ctx.closePath()
         ctx.stroke()
       },
@@ -149,8 +154,7 @@ export class AudioTeleSystem {
       },
       'cls()': () => {
         // ( -- )
-        ctx.fillStyle = '#000000'
-        ctx.fillRect(0, 0, 128, 128)
+        ctx.clearRect(0, 0, 128, 128)
       },
       'midi/input-notes()': ({ push }) => {
         // ( -- notes[] )

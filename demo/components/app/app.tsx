@@ -170,15 +170,17 @@ export const App: FunctionComponent = () => {
           </button>
         </div>
         <div className={s.right}>
-          <canvas
-            ref={e => {
-              canvasRef.current = e ?? undefined
-              drawingContextRef.current = e?.getContext('2d') ?? undefined
-            }}
-            className={s.canvas}
-            width={128}
-            height={128}
-          ></canvas>
+          <div className={s.canvasWrapper}>
+            <canvas
+              ref={e => {
+                canvasRef.current = e ?? undefined
+                drawingContextRef.current = e?.getContext('2d', { alpha: false }) ?? undefined
+              }}
+              className={s.canvas}
+              width={128}
+              height={128}
+            ></canvas>
+          </div>
           <button
             type="button"
             onClick={() => {

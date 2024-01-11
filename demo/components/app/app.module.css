@@ -53,14 +53,20 @@
   height: 50px;
 }
 
-.canvas {
-  width: calc(128px * 3);
+.canvasWrapper {
+  width: calc((128px * 3) + 2px);
   aspect-ratio: 1;
-  image-rendering: pixelated;
 
   &:not(:fullscreen) {
     border: 1px solid #ccc;
   }
+}
+
+.canvas {
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+  transform: scale(3);
+  transform-origin: top left;
 }
 
 .pane {
