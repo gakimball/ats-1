@@ -52,7 +52,7 @@ tup rect{}
 end
 
 tup note{}
-  .pitch 0 .velocity 0 .duration 0
+  .pitch .velocity
 end
 
 0 0 128 128 rect{} const gfx/tv!

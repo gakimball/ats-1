@@ -14,8 +14,6 @@ import { Editor, EditorRef } from '../editor/editor'
 import { Header } from '../header/header'
 import { NavItem } from '../nav-item/nav-item'
 import { createFakeMidiOutput } from '../../utils/fake-midi-output'
-import { ChangeEvent } from 'preact/compat'
-import { createMidiSpeaker } from '../../utils/midi-speaker'
 import { EVMError } from '../../../src/utils/evm-error'
 import { TapeList } from '../tape-list/tape-list'
 import { TAPES, TapeDefinition } from '../../utils/tapes'
@@ -95,7 +93,6 @@ export const App: FunctionComponent = () => {
       drawingContextRef.current,
       midiInput,
       createFakeMidiOutput(),
-      createMidiSpeaker(),
     )
     midiCCRef.current?.transmitAllValues()
   })

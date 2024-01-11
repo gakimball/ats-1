@@ -15,7 +15,7 @@ fn game()
 
   playing if?
     ( List of notes currently being played )
-    midi/file-notes()
+    notes()
       [[ .pitch ]] map
       let notes!
 
@@ -25,7 +25,7 @@ fn game()
       let current-lines!
 
     ( Add new lines for notes that just began playing )
-    midi/file-notes/pressed()
+    notes-pressed()
       [[ note->line() ]] map
       let new-lines!
 

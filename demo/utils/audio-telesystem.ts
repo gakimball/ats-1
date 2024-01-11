@@ -1,3 +1,4 @@
+import * as Tone from 'tone'
 import { Midi } from '@tonejs/midi'
 import { CONTROL_CHANGE, NOTE_OFF, NOTE_ON } from './constants';
 import { EVM } from '../../src/evm'
@@ -15,22 +16,15 @@ export interface MIDIEventHandler {
   dispose?: () => void;
 }
 
-export interface MIDISpeakerNote {
+export interface MIDINote {
   pitch: number;
   velocity: number;
-  duration: number;
-}
-
-export interface MIDISpeaker {
-  play: (midi: Midi) => void;
-  stop: () => void;
-  onNote: ((note: MIDISpeakerNote, isOn: boolean) => void) | null;
 }
 
 export class AudioTeleSystem {
-  private prevNotes = new Set<number>();
+  private prevNotes = new Set<MIDINote>();
 
-  private notes = new Set<number>();
+  private notes = new Set<MIDINote>();
 
   private connectMidi = false;
 
@@ -39,8 +33,6 @@ export class AudioTeleSystem {
   private midiInput?: MIDIEventEmitter
 
   private midiOutput?: MIDIEventHandler
-
-  private midiSpeaker?: MIDISpeaker
 
   private midiCC: number[] = []
 
@@ -51,30 +43,30 @@ export class AudioTeleSystem {
     buffer: ArrayBuffer;
   }> = []
 
-  private prevSongNotes = new Set<MIDISpeakerNote>()
-
-  private songNotes = new Set<MIDISpeakerNote>()
-
   constructor(
     private readonly onError: (error: Error) => void,
   ) {}
 
-  handleMidiInput = (evt: Event) => {
-    const event = evt as MIDIMessageEvent
-    const command = event.data[0] >> 4;
-    const pitch = event.data[1];
-    const velocity = event.data.length > 2 ? event.data[2] : 1;
+  handleMidiInput = (data: Uint8Array, sendToOutput: boolean) => {
+    const command = data[0] >> 4;
+    const pitch = data[1];
+    const velocity = data.length > 2 ? data[2] : 1;
 
     if (command === NOTE_OFF || (command === NOTE_ON && velocity === 0)) {
-      this.notes.delete(pitch)
+      const note = Array.from(this.notes).find(note => note.pitch === pitch)
+
+      if (note) { this.notes.delete(note) }
     } else if (command === NOTE_ON) {
-      this.notes.add(pitch)
+      this.notes.add({
+        pitch,
+        velocity,
+      })
     } else if (command === CONTROL_CHANGE) {
-      this.midiCC[event.data[1]] = event.data[2]
+      this.midiCC[data[1]] = data[2]
     }
 
-    if (this.connectMidi) {
-      this.midiOutput?.send(event.data)
+    if (sendToOutput) {
+      this.midiOutput?.send(data)
     }
   }
 
@@ -83,7 +75,6 @@ export class AudioTeleSystem {
     ctx: CanvasRenderingContext2D,
     midiInput: MIDIEventEmitter,
     midiOutput: MIDIEventHandler,
-    midiSpeaker: MIDISpeaker,
   ) {
     ctx.imageSmoothingEnabled = false
 
@@ -156,31 +147,25 @@ export class AudioTeleSystem {
         // ( -- )
         ctx.clearRect(0, 0, 128, 128)
       },
-      'midi/input-notes()': ({ push }) => {
+      'notes()': ({ push }) => {
         // ( -- notes[] )
-        push(Array.from(this.notes))
-      },
-      'midi/input-notes/pressed()': ({ push }) => {
-        const notes = Array.from(this.notes).filter(note => !this.prevNotes.has(note))
+        const notes = Array.from(this.notes).map(note => ({
+          [TUPLE_TYPE]: 'note{}',
+          ...note,
+        }))
 
-        // ( -- notes[] )
         push(notes)
       },
-      'midi/file-notes()': ({ push }) => {
+      'notes-pressed()': ({ push }) => {
         // ( -- notes[] )
-        push(Array.from(this.songNotes).map(note => ({
-          [TUPLE_TYPE]: 'note{}',
-          ...note,
-        })))
-      },
-      'midi/file-notes/pressed()': ({ push }) => {
-        const notes = Array.from(this.songNotes).filter(note => !this.prevSongNotes.has(note))
+        const notes = Array.from(this.notes)
+          .filter(note => !this.prevNotes.has(note))
+          .map(note => ({
+            [TUPLE_TYPE]: 'note{}',
+            ...note,
+          }))
 
-        // ( -- notes[] )
-        push(notes.map(note => ({
-          [TUPLE_TYPE]: 'note{}',
-          ...note,
-        })))
+        push(notes)
       },
       'midi/cc()': ({ pop, num, push }) => {
         const id = num(pop())
@@ -207,7 +192,7 @@ export class AudioTeleSystem {
           throw new Error(`MIDI file ${file.name} does not exist`)
         }
 
-        this.midiSpeaker?.play(new Midi(midiFile.buffer))
+        this.startFilePlayback(midiFile.buffer)
       },
       'random()': ({ num, pop, push }) => {
         // ( min max -- num )
@@ -237,15 +222,7 @@ export class AudioTeleSystem {
     this.isRunning = true
     this.midiInput = midiInput
     this.midiOutput = midiOutput
-    this.midiSpeaker = midiSpeaker
-    midiInput.onmidimessage = this.handleMidiInput
-    midiSpeaker.onNote = (note, isOn) => {
-      if (isOn) {
-        this.songNotes.add(note)
-      } else {
-        this.songNotes.delete(note)
-      }
-    }
+    midiInput.onmidimessage = evt => this.handleMidiInput((evt as MIDIMessageEvent).data, this.connectMidi)
 
     evm.execute(atsStdLib)
     evm.execute(`
@@ -263,7 +240,6 @@ export class AudioTeleSystem {
         try {
           evm.execute('game()')
           this.prevNotes = new Set(this.notes.values())
-          this.prevSongNotes = new Set(this.songNotes.values())
         } catch (error: unknown) {
           this.handleError(error)
         }
@@ -279,7 +255,7 @@ export class AudioTeleSystem {
     this.isRunning = false
     window.cancelAnimationFrame(this.rafHandle)
     this.midiOutput?.dispose?.()
-    this.midiSpeaker?.stop()
+    this.stopFilePlayback()
 
     if (this.midiInput) {
       this.midiInput.onmidimessage = null
@@ -296,5 +272,38 @@ export class AudioTeleSystem {
     if (error instanceof Error) {
       this.onError(error)
     }
+  }
+
+  private startFilePlayback(arrayBuffer: ArrayBuffer) {
+    const now = Tone.now() + 0.5
+    const midi = new Midi(arrayBuffer)
+
+    midi.tracks.forEach(track => {
+      track.notes.forEach(note => {
+        const time = now + note.time
+
+        Tone.Transport.scheduleOnce(() => {
+          this.handleMidiInput(new Uint8Array([
+            NOTE_ON << 4,
+            note.midi,
+            1,
+          ]), true)
+        }, time)
+
+        Tone.Transport.scheduleOnce(() => {
+          this.handleMidiInput(new Uint8Array([
+            NOTE_OFF << 4,
+            note.midi,
+            1,
+          ]), true)
+        }, time + note.duration)
+      })
+    })
+
+    Tone.Transport.start()
+  }
+
+  private stopFilePlayback() {
+    Tone.Transport.stop()
   }
 }

@@ -27,7 +27,7 @@ fn game()
 
   shape/new() let shape!
 
-  midi/input-notes/pressed()
+  notes-pressed()
     [[ pop shape frame .frame-start! ]] map
     [[ shapes _ concat ]] call
     [[ shape/get-radius() max-radius lt() ]] filter

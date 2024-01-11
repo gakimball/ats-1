@@ -156,12 +156,12 @@ end
 
 ```
 ( Check if a list is not empty, and then access the first value of the list )
-midi/notes() ~if?
+midi/files() ~if?
   first midi/play()
 end
 
 ( The same code without keep mode: )
-midi/notes() dup if?
+midi/files() dup if?
   first midi/play()
 else
   pop
