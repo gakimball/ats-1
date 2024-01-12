@@ -2,6 +2,7 @@
 [] var lines!
 0 var frame!
 :false var playing!
+gfx/pal 1 0x28 set gfx/pal!
 
 tup line{} .pitch .velocity .color end
 

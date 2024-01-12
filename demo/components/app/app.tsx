@@ -31,6 +31,7 @@ export const App: FunctionComponent = () => {
   const [error, setError] = useState<Error>()
   const [visiblePane, setVisiblePane] = useState<AppPane>()
   const [tape, setTape] = useState(TAPES[0])
+  const [ccLabels, setCCLabels] = useState<string[]>([])
 
   const editorRef = useRef<EditorRef>(null)
   const canvasRef = useRef<HTMLCanvasElement>()
@@ -43,11 +44,24 @@ export const App: FunctionComponent = () => {
   const loadTape = useEventHandler((value: TapeDefinition) => {
     setTape(value)
     setVisiblePane(undefined)
+    setCCLabels([])
 
     value.contents.split('\n').forEach(line => {
       if (line.startsWith('(#CC')) {
-        const ccData = line.slice(1, -1).split(' ').slice(1).map(str => Number.parseInt(str, 10))
-        midiCCRef.current?.setValue(ccData[0], ccData[1])
+        const ccData = line.slice(1, -1).split(' ').slice(1)
+        const ccId = Number.parseInt(ccData[0], 10)
+        const label = ccData[1]
+        const defaultValue = Number.parseInt(ccData[2], 10)
+
+        midiCCRef.current?.setValue(
+          ccId,
+          Number.isNaN(defaultValue) ? 0 : defaultValue,
+        )
+        setCCLabels(prev => {
+          const next = [...prev]
+          next[ccId] = label
+          return next
+        })
       }
     })
   })
@@ -193,18 +207,18 @@ export const App: FunctionComponent = () => {
             onChangeInput={setInputId}
           />
           {!inputId && (
-            <>
+            <div className={s.inputArea}>
               <Piano
                 isActive={isRunning}
                 onNoteOn={sendNoteOn}
                 onNoteOff={sendNoteOff}
               />
-              <div style={{ height: '25px' }} />
               <MidiCC
                 ref={midiCCRef}
                 onMidiMessage={sendMIDIMessage}
+                ccLabels={ccLabels}
               />
-            </>
+            </div>
           )}
         </div>
       </div>

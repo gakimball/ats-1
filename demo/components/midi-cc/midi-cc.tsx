@@ -1,11 +1,11 @@
-import { FunctionComponent } from 'preact';
-import { useImperativeHandle, useState } from 'preact/hooks';
-import { useEventHandler } from '../../hooks/use-event-handler';
-import { JSXInternal } from 'preact/src/jsx';
-import { CONTROL_CHANGE } from '../../utils/constants';
 import { forwardRef } from 'preact/compat';
+import { useEffect, useImperativeHandle, useRef, useState } from 'preact/hooks';
+import { useEventHandler } from '../../hooks/use-event-handler';
+import { CONTROL_CHANGE } from '../../utils/constants';
+import s from './midi-cc.module.css'
 
 interface MidiCCProps {
+  ccLabels: string[];
   onMidiMessage: (message: Uint8Array) => void;
 }
 
@@ -15,39 +15,68 @@ export interface MidiCCRef {
 }
 
 export const MidiCC = forwardRef<MidiCCRef, MidiCCProps>(({
+  ccLabels,
   onMidiMessage,
 }, ref) => {
-  const [active, setActive] = useState(0)
-  const [state, setState] = useState<number[]>(Array(128).fill(0))
+  const [ccValues, setCCValues] = useState<number[]>(Array(128).fill(0))
+  const [ccOffset, setCCOffset] = useState(0)
+
+  const activeCCKnob = useRef<{
+    ccId: number;
+    startValue: number;
+    startX: number;
+  }>()
 
   const setCCNumber = useEventHandler((id: number, value: number) => {
-    setState(prev => {
+    setCCValues(prev => {
       const next = [...prev]
       next[id] = value
       return next
     })
   })
 
-  const handleCCChange = useEventHandler((event: JSXInternal.TargetedEvent<HTMLInputElement>) => {
-    setActive(Number.parseInt(event.currentTarget.value, 10))
+  const handleMouseDown = useEventHandler((event: MouseEvent, ccId: number) => {
+    activeCCKnob.current = {
+      ccId,
+      startValue: ccValues[ccId],
+      startX: event.pageX,
+    }
   })
 
-  const sendCCMessage = useEventHandler((event: JSXInternal.TargetedEvent<HTMLInputElement>) => {
-    const value = Number.parseInt(event.currentTarget.value, 10)
+  useEffect(() => {
+    const handle = (event: MouseEvent) => {
+      if (activeCCKnob.current) {
+        const { ccId, startValue, startX } = activeCCKnob.current
+        let nextValue = startValue + event.pageX - startX
+        nextValue = Math.max(0, Math.min(127, nextValue))
 
-    setCCNumber(active, value)
-    onMidiMessage(new Uint8Array([
-      CONTROL_CHANGE << 4,
-      active,
-      value,
-    ]))
+        setCCNumber(ccId, nextValue)
+        onMidiMessage(new Uint8Array([
+          CONTROL_CHANGE << 4,
+          ccId,
+          nextValue,
+        ]))
+      }
+    }
+
+    window.addEventListener('mousemove', handle)
+    return () => window.removeEventListener('mousemove', handle)
+  }, [onMidiMessage])
+
+  useEffect(() => {
+    const handle = () => {
+      activeCCKnob.current = undefined
+    }
+
+    window.addEventListener('mouseup', handle)
+    return () => window.removeEventListener('mouseup', handle)
   })
 
   useImperativeHandle(ref, () => ({
     setValue: setCCNumber,
     transmitAllValues: () => {
-      console.log({ state })
-      state.forEach((value, id) => {
+      console.log({ state: ccValues })
+      ccValues.forEach((value, id) => {
         onMidiMessage(new Uint8Array([
           CONTROL_CHANGE << 4,
           id,
@@ -59,24 +88,30 @@ export const MidiCC = forwardRef<MidiCCRef, MidiCCProps>(({
 
   return (
     <div>
-      <input
-        value={active}
-        onChange={handleCCChange}
-        type="number"
-        min="0"
-        max="127"
-        step="1"
-      />
-      <br />
-      <span style={{ display: 'inline-block', width: '30px' }}>{state[active]}</span>
-      <input
-        value={state[active]}
-        onChange={sendCCMessage}
-        type="range"
-        min="0"
-        max="127"
-        step="1"
-      />
+      {[0, 1, 2, 3].map(index => {
+        const ccId = (ccOffset * 4) + index
+
+        return (
+          <div
+            key={ccId}
+            className={s.row}
+          >
+            <div
+              className={s.knob}
+              style={{
+                '--MidiCC-knob-rotation': ccValues[ccId],
+              }}
+              onMouseDown={event => handleMouseDown(event, ccId)}
+            />
+            <div className={s.value}>
+              {ccId}: {ccValues[ccId]}
+            </div>
+            <div className={s.label}>
+              {ccLabels[ccId]}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 })

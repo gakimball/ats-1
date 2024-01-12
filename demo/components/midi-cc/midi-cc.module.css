@@ -1,0 +1,48 @@
+.row {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+
+  & + & {
+    margin-top: 8px;
+  }
+}
+
+.knob {
+  --MidiCC-knob-rotation: 0;
+
+  position: relative;
+  width: 30px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background-color: #000;
+  cursor: pointer;
+  transform: rotate(calc(var(--MidiCC-knob-rotation) * 1.5deg));
+
+  &:hover {
+    background-color: #111;
+  }
+
+  &::before {
+    content: '';
+    display: block;
+    position: absolute;
+    top: calc(50% - 3px);
+    background-color: #ccc;
+    left: 2px;
+    width: 6px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+  }
+}
+
+.value {
+  width: 50px;
+  font-family: monospace;
+}
+
+.label {
+  color: #999;
+}

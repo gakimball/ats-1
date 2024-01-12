@@ -1,4 +1,6 @@
-(#CC 2 40)
+(#CC 0 Sides 20)
+(#CC 1 Color)
+(#CC 2 Radius 40)
 
 gfx/tv .w 2 /
   const center!

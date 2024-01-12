@@ -56,10 +56,6 @@
 .canvasWrapper {
   width: calc((128px * 3) + 2px);
   aspect-ratio: 1;
-
-  &:not(:fullscreen) {
-    border: 1px solid #ccc;
-  }
 }
 
 .canvas {
@@ -67,6 +63,7 @@
   image-rendering: pixelated;
   transform: scale(3);
   transform-origin: top left;
+  border-radius: 4px;
 }
 
 .pane {
@@ -86,4 +83,11 @@
   margin-block: 10px 0;
   font-style: italic;
   color: #ccc;
+}
+
+.inputArea {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 16px;
 }
