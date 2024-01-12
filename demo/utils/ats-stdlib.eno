@@ -1,3 +1,7 @@
+[] var #notes!
+[] var #notes-pressed!
+[] var #files!
+
 tup vec{}
   .x 0 .y 0
 end

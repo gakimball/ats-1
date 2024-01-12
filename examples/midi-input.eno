@@ -1,11 +1,11 @@
 gfx/tv .h const h!
 
-midi/route()
+route-midi()
 
 fn game()
   cls()
 
-  notes() [[
+  #notes [[
     .pitch 0 1 h rect{} 0x21 rect()
   ]] each
 end

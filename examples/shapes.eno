@@ -20,14 +20,14 @@ tup shape{}
   .frame-start
 end
 
-midi/route()
+route-midi()
 
 fn game()
   cls()
 
   shape/new() let shape!
 
-  notes-pressed()
+  #notes-pressed
     [[ pop shape frame .frame-start! ]] map
     [[ shapes _ concat ]] call
     [[ shape/get-radius() max-radius lt() ]] filter
@@ -54,15 +54,15 @@ end
 ( -- shape{} )
 fn shape/new()
   shape{->}
-    0 midi/cc()
+    0 midi-cc()
       10 //
       2 +
       .sides!
-    1 midi/cc()
+    1 midi-cc()
       11 //
       [[ colors _ get ]] call
       .color!
-    2 midi/cc()
+    2 midi-cc()
       .radius!
 end
 

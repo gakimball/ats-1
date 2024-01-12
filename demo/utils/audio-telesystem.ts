@@ -5,7 +5,8 @@ import { EVM } from '../../src/evm'
 import { PALETTE } from './palette';
 import { FONT } from './font';
 import atsStdLib from 'bundle-text:./ats-stdlib.eno'
-import { TUPLE_TYPE } from '../../src/types/machine-type';
+import { EVMTuple, TUPLE_TYPE } from '../../src/types/machine-type';
+import { createTuple } from '../../src/utils/create-tuple';
 
 export interface MIDIEventEmitter {
   onmidimessage: ((event: MIDIMessageEvent) => void) | null;
@@ -16,15 +17,22 @@ export interface MIDIEventHandler {
   dispose?: () => void;
 }
 
-export interface MIDINote {
+interface ATSNote extends EVMTuple {
   pitch: number;
   velocity: number;
 }
 
-export class AudioTeleSystem {
-  private prevNotes = new Set<MIDINote>();
+interface ATSFile {
+  buffer: ArrayBuffer;
+  file: EVMTuple & {
+    name: string;
+  };
+}
 
-  private notes = new Set<MIDINote>();
+export class AudioTeleSystem {
+  private prevNotes = new Set<ATSNote>();
+
+  private notes = new Set<ATSNote>();
 
   private connectMidi = false;
 
@@ -38,10 +46,7 @@ export class AudioTeleSystem {
 
   private isRunning = true
 
-  private midiFiles: Array<{
-    filename: string;
-    buffer: ArrayBuffer;
-  }> = []
+  private files: ATSFile[] = []
 
   constructor(
     private readonly onError: (error: Error) => void,
@@ -57,10 +62,10 @@ export class AudioTeleSystem {
 
       if (note) { this.notes.delete(note) }
     } else if (command === NOTE_ON) {
-      this.notes.add({
+      this.notes.add(createTuple('note{}', {
         pitch,
         velocity,
-      })
+      }))
     } else if (command === CONTROL_CHANGE) {
       this.midiCC[data[1]] = data[2]
     }
@@ -79,7 +84,7 @@ export class AudioTeleSystem {
     ctx.imageSmoothingEnabled = false
 
     const evm = new EVM({
-      'rect()': ({ variable, num, pop, tuple }) => {
+      'rect()': ({ num, pop, tuple }) => {
         // ( rect{} color -- )
         const color = PALETTE[num(pop())]
         const rect = tuple('rect{}', pop())
@@ -147,46 +152,19 @@ export class AudioTeleSystem {
         // ( -- )
         ctx.clearRect(0, 0, 128, 128)
       },
-      'notes()': ({ push }) => {
-        // ( -- notes[] )
-        const notes = Array.from(this.notes).map(note => ({
-          [TUPLE_TYPE]: 'note{}',
-          ...note,
-        }))
-
-        push(notes)
-      },
-      'notes-pressed()': ({ push }) => {
-        // ( -- notes[] )
-        const notes = Array.from(this.notes)
-          .filter(note => !this.prevNotes.has(note))
-          .map(note => ({
-            [TUPLE_TYPE]: 'note{}',
-            ...note,
-          }))
-
-        push(notes)
-      },
-      'midi/cc()': ({ pop, num, push }) => {
+      'midi-cc()': ({ pop, num, push }) => {
         const id = num(pop())
 
         push(this.midiCC[id] ?? 0)
       },
-      'midi/route()': () => {
+      'route-midi()': () => {
         // ( -- )
         this.connectMidi = true
       },
-      'midi/get-files()': ({ push }) => {
-        push(this.midiFiles.map((file, index) => ({
-          [TUPLE_TYPE]: 'file{}',
-          name: file.filename,
-          handle: index,
-        })))
-      },
-      'midi/play-file()': ({ num, pop, tuple }) => {
+      'file/play()': ({ num, pop, tuple }) => {
         // ( index -- )
         const file = tuple('file{}', pop())
-        const midiFile = this.midiFiles[num(file.handle)]
+        const midiFile = this.files.find(item => item.file.name === file.name)
 
         if (!midiFile) {
           throw new Error(`MIDI file ${file.name} does not exist`)
@@ -228,6 +206,7 @@ export class AudioTeleSystem {
     evm.execute(`
       [ ${PALETTE.map((_, index) => index).join(' ')} ] const gfx/colors!
     `)
+    evm.setVariable('#files', this.files.map(file => file.file))
 
     try {
       evm.execute(script)
@@ -238,8 +217,10 @@ export class AudioTeleSystem {
     const draw = () => {
       if (this.isRunning) {
         try {
-          evm.execute('game()')
+          evm.setVariable('#notes', Array.from(this.notes))
+          evm.setVariable('#notes-pressed', Array.from(this.notes).filter(note => !this.prevNotes.has(note)))
           this.prevNotes = new Set(this.notes.values())
+          evm.execute('game()')
         } catch (error: unknown) {
           this.handleError(error)
         }
@@ -263,7 +244,10 @@ export class AudioTeleSystem {
   }
 
   addMidiFile(filename: string, buffer: ArrayBuffer) {
-    this.midiFiles.push({ filename, buffer })
+    this.files.push({
+      buffer,
+      file: createTuple('file{}', { name: filename })
+    })
   }
 
   private handleError(error: unknown) {

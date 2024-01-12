@@ -5,7 +5,7 @@ gfx/tv .h const rainbow/max-height!
 
 0 var frame!
 
-midi/route()
+route-midi()
 
 fn game()
   [ 0 1 2 ] [[ draw-rainbow() ]] each

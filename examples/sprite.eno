@@ -13,7 +13,7 @@ fn update()
   0 let delta!
   2 let speed!
 
-  notes()
+  #notes
   60 ~has if?
     delta speed - delta!
   end

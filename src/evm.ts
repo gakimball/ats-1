@@ -117,6 +117,18 @@ export class EVM {
     return [...this.stack]
   }
 
+  setVariable(name: string, value: EVMType) {
+    if (!(name in this.variables)) {
+      throw new EVMError(`Variable ${name} is not defined`, this.errorData)
+    }
+
+    if (this.isConstantVariable(name)) {
+      throw new EVMError(`Variable ${name} is constant`, this.errorData)
+    }
+
+    this.variables[name] = value
+  }
+
   execute(
     input: string,
     outerClosures: EVMClosure[] = [this.variables],
@@ -347,6 +359,10 @@ export class EVM {
             }
 
             value = object[prop]
+
+            if (value === undefined) {
+              throw new EVMError(`List index ${prop} is out of bounds (length: ${object.length})`, this.errorData)
+            }
           }
 
           if (typeof prop === 'string') {
@@ -355,6 +371,10 @@ export class EVM {
             }
 
             value = object[prop]
+
+            if (value === undefined) {
+              throw new EVMError(`Property ${prop} does not exist on tuple ${object[TUPLE_TYPE]}`, this.errorData)
+            }
           }
 
           this.push(value ?? 0)
@@ -450,8 +470,8 @@ export class EVM {
           const value = this.pop()
           let truthy = false
 
-          if (Array.isArray(value) && value.length > 0) {
-            truthy = true
+          if (Array.isArray(value)) {
+            truthy = value.length > 0
           } else if (typeof value === 'object') {
             truthy = true
           }
