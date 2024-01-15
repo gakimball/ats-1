@@ -91,6 +91,12 @@ word applyif
   dupd call if? then call else pop end
 end
 
+( a b -- and )
+word and
+  let a! let b!
+  a if? b if? :true else :false end else :false end
+end
+
 
 ( VALUES )
 word ~is-num dup is-num end

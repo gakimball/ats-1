@@ -5,7 +5,7 @@ import classnames from 'classnames/bind'
 import { MIDIStatus } from '../midi-status/midi-status'
 import { AudioTeleSystem } from '../../utils/audio-telesystem'
 import { useEventHandler } from '../../hooks/use-event-handler'
-import { NOTE_OFF, NOTE_ON } from '../../utils/constants'
+import { NOTE_OFF, NOTE_ON, PROGRAM_CHANGE } from '../../utils/constants'
 import { createFakeMidiInput } from '../../utils/fake-midi-input'
 import { Piano } from '../piano/piano'
 import { PaletteViewer } from '../palette-viewer/palette-viewer'
@@ -19,6 +19,7 @@ import { TapeList } from '../tape-list/tape-list'
 import { TAPES, TapeDefinition } from '../../utils/tapes'
 import s from './app.module.css'
 import { MidiCC, MidiCCRef } from '../midi-cc/midi-cc'
+import { MidiPC } from '../midi-pc/midi-pc'
 
 type AppPane = 'palette' | 'tapes' | 'midi'
 
@@ -32,6 +33,7 @@ export const App: FunctionComponent = () => {
   const [visiblePane, setVisiblePane] = useState<AppPane>()
   const [tape, setTape] = useState(TAPES[0])
   const [ccLabels, setCCLabels] = useState<string[]>([])
+  const [midiProgram, setMidiProgram] = useState(0)
 
   const editorRef = useRef<EditorRef>(null)
   const canvasRef = useRef<HTMLCanvasElement>()
@@ -140,6 +142,14 @@ export const App: FunctionComponent = () => {
     setVisiblePane(undefined)
   })
 
+  const handleProgramChange = useEventHandler((value: number) => {
+    setMidiProgram(value)
+    sendMIDIMessage(new Uint8Array([
+      PROGRAM_CHANGE << 4,
+      value,
+    ]))
+  })
+
   return (
     <>
       <div className={s.container}>
@@ -217,6 +227,10 @@ export const App: FunctionComponent = () => {
                 ref={midiCCRef}
                 onMidiMessage={sendMIDIMessage}
                 ccLabels={ccLabels}
+              />
+              <MidiPC
+                value={midiProgram}
+                onChange={handleProgramChange}
               />
             </div>
           )}

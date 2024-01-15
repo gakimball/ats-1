@@ -27,6 +27,16 @@ route-midi()
 fn game()
   cls()
 
+  midi-pc() let pc!
+
+  pc 0 == if?
+    stop-playback()
+  end
+
+  pc 1 == ( && ) #files and if?
+    #files first file/play()
+  end
+
   shape/new() let shape!
 
   #notes-pressed
@@ -120,7 +130,7 @@ fn angle->vector()
   apply2 vec{}
 end
 
-( a b -- a>b )
+( a b -- a<b )
 fn lt()
   swap - is-truthy
 end

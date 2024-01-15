@@ -1,6 +1,6 @@
 import * as Tone from 'tone'
 import { Midi } from '@tonejs/midi'
-import { CONTROL_CHANGE, NOTE_OFF, NOTE_ON } from './constants';
+import { CONTROL_CHANGE, NOTE_OFF, NOTE_ON, PROGRAM_CHANGE } from './constants';
 import { EVM } from '../../src/evm'
 import { PALETTE } from './palette';
 import { FONT } from './font';
@@ -48,6 +48,8 @@ export class AudioTeleSystem {
 
   private files: ATSFile[] = []
 
+  private pendingProgramChange?: number
+
   constructor(
     private readonly onError: (error: Error) => void,
   ) {}
@@ -68,6 +70,8 @@ export class AudioTeleSystem {
       }))
     } else if (command === CONTROL_CHANGE) {
       this.midiCC[data[1]] = data[2]
+    } else if (command === PROGRAM_CHANGE) {
+      this.pendingProgramChange = data[1]
     }
 
     if (sendToOutput) {
@@ -153,15 +157,21 @@ export class AudioTeleSystem {
         ctx.clearRect(0, 0, 128, 128)
       },
       'midi-cc()': ({ pop, num, push }) => {
+        // ( id -- value )
         const id = num(pop())
 
         push(this.midiCC[id] ?? 0)
+      },
+      'midi-pc()': ({ push }) => {
+        // ( -- value )
+        push(this.pendingProgramChange ?? -1)
+        this.pendingProgramChange = undefined
       },
       'route-midi()': () => {
         // ( -- )
         this.connectMidi = true
       },
-      'file/play()': ({ num, pop, tuple }) => {
+      'file/play()': ({ pop, tuple }) => {
         // ( index -- )
         const file = tuple('file{}', pop())
         const midiFile = this.files.find(item => item.file.name === file.name)
@@ -171,6 +181,10 @@ export class AudioTeleSystem {
         }
 
         this.startFilePlayback(midiFile.buffer)
+      },
+      'stop-playback()': () => {
+        // ( -- )
+        this.stopFilePlayback()
       },
       'random()': ({ num, pop, push }) => {
         // ( min max -- num )
@@ -289,5 +303,14 @@ export class AudioTeleSystem {
 
   private stopFilePlayback() {
     Tone.Transport.stop()
+
+    // Copying the Set because NOTE_OFF messages modify the Set
+    Array.from(this.notes).forEach(note => {
+      this.handleMidiInput(new Uint8Array([
+        NOTE_OFF << 4,
+        note.pitch,
+        note.velocity,
+      ]), true)
+    })
   }
 }
