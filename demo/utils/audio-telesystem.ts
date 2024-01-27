@@ -29,6 +29,16 @@ interface ATSFile {
   };
 }
 
+interface ATSVector {
+  x: number;
+  y: number;
+}
+
+interface ATSRectangle extends ATSVector {
+  w: number;
+  h: number;
+}
+
 export class AudioTeleSystem {
   private prevNotes = new Set<ATSNote>();
 
@@ -88,25 +98,26 @@ export class AudioTeleSystem {
     ctx.imageSmoothingEnabled = false
 
     const evm = new EVM({
-      'rect()': ({ num, pop, tuple }) => {
+      'rect()': ({ num, int, pop, tuple }) => {
         // ( rect{} color -- )
         const color = PALETTE[num(pop())]
         const rect = tuple('rect{}', pop())
 
         ctx.fillStyle = color
         ctx.fillRect(
-          Math.round(num(rect.x)),
-          Math.round(num(rect.y)),
-          Math.round(num(rect.w)),
-          Math.round(num(rect.h)),
+          int(rect.x),
+          int(rect.y),
+          int(rect.w),
+          int(rect.h),
         )
       },
-      'spr()': ({ pop, num, list, tuple, execute, push }) => {
+      'spr()': ({ push, pop, num, int, list, tuple, variable, execute }) => {
         // ( rect{} chr[] -- )
         const chr = list(pop())
-        const rect = tuple('rect{}', pop())
-        const x = Math.round(num(rect.x))
-        const y = Math.round(num(rect.y))
+        const rect: ATSRectangle = tuple('rect{}', pop())
+        const palette = list(variable('gfx/pal')).map(Number)
+        const x = int(rect.x)
+        const y = int(rect.y)
 
         // Adapted from: https://wiki.xxiivv.com/site/chr_format.html
         for (let v = 0; v < 8; v++) {
@@ -115,31 +126,33 @@ export class AudioTeleSystem {
             const channel2 = ((num(chr[v + 8]) >> h) & 0x1) << 1;
             const colorIndex = channel1 + channel2
 
-            push(x + 7 - h)
-            push(y + v)
-            execute(`vec{} gfx/pal ${colorIndex} get pixel()`)
+            push({
+              [TUPLE_TYPE]: 'vec{}',
+              x: x + 7 - h,
+              y: y + v,
+            })
+            push(palette[colorIndex])
+            execute(`pixel()`)
           }
         }
       },
       'line()': ({ pop, num, tuple }) => {
         // ( from to color -- )
         const color = PALETTE[num(pop())]
-        const to = tuple('vec{}', pop())
-        const from = tuple('vec{}', pop())
+        const to = tuple<ATSVector>('vec{}', pop())
+        const from = tuple<ATSVector>('vec{}', pop())
 
         ctx.strokeStyle = color
         ctx.beginPath()
-        ctx.moveTo(Math.round(num(from.x)), Math.round(num(from.y)))
-        ctx.lineTo(Math.round(num(to.x)), Math.round(num(to.y)))
+        ctx.moveTo(Math.round(from.x), Math.round(from.y))
+        ctx.lineTo(Math.round(to.x), Math.round(to.y))
         ctx.closePath()
         ctx.stroke()
       },
-      'text()': ({ pop, tuple, num, string, execute }) => {
+      'text()': ({ pop, tuple, push, string, execute }) => {
         // ( vec{} string -- )
         const chars = string(pop()).split('')
-        const vec = tuple('vec{}', pop())
-        const x = num(vec.x)
-        const y = num(vec.y)
+        const vec = tuple<ATSVector>('vec{}', pop())
 
         chars.forEach((value, index) => {
           const code = value.charCodeAt(0)
@@ -149,7 +162,15 @@ export class AudioTeleSystem {
           ]
           const offset = index * 8
 
-          execute(`${x + offset} ${y} 1 1 rect{} [ ${sprite.join(' ')} ] spr()`)
+          push({
+            [TUPLE_TYPE]: 'rect{}',
+            x: vec.x + offset,
+            y: vec.y,
+            w: 1,
+            h: 1,
+          })
+          push(sprite)
+          execute('spr()')
         })
       },
       'cls()': () => {
@@ -249,8 +270,8 @@ export class AudioTeleSystem {
   stop() {
     this.isRunning = false
     window.cancelAnimationFrame(this.rafHandle)
-    this.midiOutput?.dispose?.()
     this.stopFilePlayback()
+    this.midiOutput?.dispose?.()
 
     if (this.midiInput) {
       this.midiInput.onmidimessage = null

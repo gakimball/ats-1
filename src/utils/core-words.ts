@@ -49,6 +49,18 @@ word filter
   res
 end
 
+( list n -- list[0..n-1] )
+word head
+  let n! let list!
+  0 n 1 - range [[ list _ get ]] map
+end
+
+( list n -- list[n..end])
+word tail
+  let n! let list!
+  n list length 1 - range [[ list _ get ]] map
+end
+
 
 ( TUPLES )
 
@@ -97,6 +109,18 @@ word and
   a if? b if? :true else :false end else :false end
 end
 
+( value case[] -- )
+word switch
+  let cases! let value!
+
+  value cases first call if?
+    value cases 1 get call
+  else
+    cases 2 tail ~if?
+      value swap recurse
+    end
+  end
+end
 
 ( VALUES )
 word ~is-num dup is-num end

@@ -17,9 +17,10 @@ interface EVMSyscallArgs {
   push: (value: EVMType) => void;
   variable: (name: string) => EVMType;
   num: (value: EVMType) => number;
+  int: (value: EVMType) => number;
   list: (value: EVMType) => EVMType[];
   execute: (script: string) => void;
-  tuple: (type: `${string}{}`, value: EVMType) => EVMTuple;
+  tuple: <T>(type: `${string}{}`, value: EVMType) => EVMTuple & T;
   string: (value: EVMType) => string;
 }
 
@@ -381,6 +382,8 @@ export class EVM {
           break
         }
         case 'set': {
+          // TODO: rework order to mimic the setter shorthand
+          // Should be ( object value prop -- object' )
           const value = this.pop()
           const prop = this.pop()
           const object = this.pop()
@@ -518,6 +521,10 @@ export class EVM {
 
           this.execute(callback.script, callback.closures, [...callStack, '(callback)'], appliedValues)
 
+          break
+        }
+        case 'recurse': {
+          index = 0
           break
         }
         case '_': {

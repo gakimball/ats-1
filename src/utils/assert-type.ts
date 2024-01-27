@@ -9,6 +9,13 @@ export const assertType = {
 
     throw new Error(`Syscall error: expected a number, got ${getEVMType(value)}`)
   },
+  int: (value: EVMType): number => {
+    if (typeof value === 'number') {
+      return Math.round(value)
+    }
+
+    throw new Error(`Syscall error: expected a number, got ${getEVMType(value)}`)
+  },
   list: (value: EVMType): EVMType[] => {
     if (Array.isArray(value)) {
       return value
@@ -16,9 +23,9 @@ export const assertType = {
 
     throw new Error(`Syscall error: expected a list, got ${getEVMType(value)}`)
   },
-  tuple: (type: `${string}{}`, value: EVMType): EVMTuple => {
+  tuple: <T>(type: `${string}{}`, value: EVMType): EVMTuple & T => {
     if (typeof value === 'object' && TUPLE_TYPE in value && value[TUPLE_TYPE] === type) {
-      return value
+      return value as EVMTuple & T
     }
 
     throw new Error(`Syscall error: expected ${type}, got ${getEVMType(value)}`)
