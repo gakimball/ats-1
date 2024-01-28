@@ -255,7 +255,9 @@ export class AudioTeleSystem {
           evm.setVariable('#notes', Array.from(this.notes))
           evm.setVariable('#notes-pressed', Array.from(this.notes).filter(note => !this.prevNotes.has(note)))
           this.prevNotes = new Set(this.notes.values())
+          const start = performance.now()
           evm.execute('game()')
+          console.log(`Frame took ${performance.now() - start}ms`)
         } catch (error: unknown) {
           this.handleError(error)
         }

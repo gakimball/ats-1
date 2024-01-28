@@ -513,13 +513,20 @@ export class EVM {
 
           break
         }
-        case 'call': {
+        case 'call':
+        case 'try': {
           const callback = this.callback()
           const appliedValues = Array
             .from({ length: callback.placeholders }, () => this.pop())
             .reverse()
 
-          this.execute(callback.script, callback.closures, [...callStack, '(callback)'], appliedValues)
+          try {
+            this.execute(callback.script, callback.closures, [...callStack, '(callback)'], appliedValues)
+          } catch (err) {
+            if (token === 'call') {
+              throw err
+            }
+          }
 
           break
         }
@@ -617,8 +624,6 @@ export class EVM {
           }
       }
     }
-
-    return this.stack.map(stringifyEVMValue).join(' ')
   }
 
   private pop(): EVMType {

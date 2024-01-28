@@ -1,0 +1,14 @@
+( list i1 i2 -- list[i1][i2] )
+fn get2d() let i2! get i2 get end
+
+( list i1 i2 value -- list' )
+fn set2d()
+  let value! let i2! let i1! let list!
+
+  list
+    i1 get
+    i2 value set
+    [[ list i1 _ set ]] call
+end
+
+[ [ 1 ] [ 2 3 ] ] 1 1 4 set2d()

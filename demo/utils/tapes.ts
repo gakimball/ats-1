@@ -1,3 +1,4 @@
+import conwayScript from 'bundle-text:../../examples/conway.eno'
 import shapesScript from 'bundle-text:../../examples/shapes.eno'
 import bootScript from 'bundle-text:../../examples/boot.eno'
 import visualizerScript from 'bundle-text:../../examples/visualizer.eno'
@@ -10,6 +11,11 @@ export interface TapeDefinition {
 }
 
 export const TAPES: TapeDefinition[] = [
+  {
+    name: 'conway',
+    description: 'Conway\'s Game of LIfe',
+    contents: conwayScript,
+  },
   {
     name: 'shapes',
     description: 'Shape drawing/MIDI CC',

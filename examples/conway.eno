@@ -1,0 +1,113 @@
+10 const grid-size!
+grid-size 1 - const grid-max-idx!
+5 const cell-size!
+0 0 cell-size cell-size rect{} const base-rect!
+[
+  [ -1 -1 ]
+  [ 0 -1 ]
+  [ 1 -1 ]
+  [ -1 0 ]
+  [ 1 0 ]
+  [ -1 1 ]
+  [ 0 1 ]
+  [ 1 1 ]
+] const neighbors!
+let frame
+
+0 grid-max-idx range
+  [[ pop 0 grid-max-idx range [[ pop 0 3 random() if? 0 else 1 end ]] map ]] map
+  let grid!
+
+route-midi()
+
+fn game()
+  frame 60 % 0 == if?
+    tick()
+  end
+
+  frame 1 + frame!
+end
+
+fn tick()
+  grid let next-grid!
+
+  cls()
+
+  grid [[
+    let y!
+    [[
+      let x! let alive!
+
+      alive if?
+        x y cell/draw()
+      end
+
+      x y cell/get-neighbors() [
+        [[ 2 == ]] [[ alive ]]
+        [[ 3 == ]] [[ :true ]]
+        [[ default ]] [[ :false ]]
+      ] switch
+      [[ next-grid y x _ set2d() ]] call
+      next-grid!
+    ]] each-index()
+  ]] each-index()
+
+  next-grid grid!
+end
+
+( list i1 i2 -- list[i1][i2] )
+fn get2d() let i2! get i2 get end
+
+( list i1 i2 value -- list' )
+fn set2d()
+  let value! let i2! let i1! let list!
+
+  list
+    i1 get
+    i2 value set
+    [[ list i1 _ set ]] call
+end
+
+( list cb -- )
+fn each-index()
+  let cb! let list!
+
+  list if?
+    0 list length 1 - range [[
+      let idx!
+
+      list idx get
+      idx
+      cb call
+    ]] each
+  end
+end
+
+( x y -- )
+fn cell/draw()
+  let y! let x!
+
+  base-rect
+    x cell-size * .x!
+    y cell-size * .y!
+  0x21 rect()
+end
+
+( x y -- )
+fn cell/get-neighbors()
+  let y! let x! let count
+
+  neighbors [[
+    let offsets!
+    offsets 0 get let dx!
+    offsets 1 get let dy!
+
+    [[
+      grid y dy + x dx + get2d() if?
+        count 1 + count!
+      end
+    ]] try
+  ]] each
+
+  count
+end

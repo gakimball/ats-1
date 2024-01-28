@@ -122,6 +122,9 @@ word switch
   end
 end
 
+( any -- :true )
+word default pop :true end
+
 ( VALUES )
 word ~is-num dup is-num end
 `.trim()
